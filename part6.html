@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 06 &mdash; Metadata &amp; Analytics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream · Part 06</div>
+    <h1>The <span class="accent">Metadata</span> Graph</h1>
+    <p class="subtitle">Pixels are processed on the GPU, but what your application actually consumes is a structured metadata graph riding alongside every batched buffer &mdash; built by nvstreammux, enriched by every plugin downstream, and read by yours.</p>
+    <div class="tags">
+        <span class="tag">NvDsBatchMeta</span>
+        <span class="tag">FrameMeta</span>
+        <span class="tag">ObjectMeta</span>
+        <span class="tag">UserMeta</span>
+        <span class="tag">Probes</span>
+        <span class="tag">pyds</span>
+        <span class="tag">nvdsanalytics</span>
+    </div>
+    <div class="pipeline">
+        <div class="pipeline-step">src</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">decode</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">mux</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">PGIE</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">track</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">SGIE</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">analytics</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">osd</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">sink</div>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Contents</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Metadata is the product</a></li>
+        <li><a href="#slide-02">The NvDsBatchMeta hierarchy</a></li>
+        <li><a href="#slide-03">The fields that matter</a></li>
+        <li><a href="#slide-04">Lifecycle &amp; pools</a></li>
+        <li><a href="#slide-05">Accessing metadata &mdash; buffer probes</a></li>
+        <li><a href="#slide-06">Extending it &mdash; NvDsUserMeta</a></li>
+        <li><a href="#slide-07">Gst-nvdsanalytics &mdash; rules on tracks</a></li>
+        <li><a href="#slide-08">From metadata to action</a></li>
+        <li><a href="#slide-09">Takeaways</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Metadata is the product</h2>
+    <p>Every plugin discussed so far &mdash; decode, mux, PGIE, tracker, SGIE, analytics, OSD &mdash; ultimately exists to do one thing: convert pixels into structured meaning. The pixels themselves stay resident in GPU memory as an <strong>NvBufSurface</strong> and are rarely touched directly by application code. What your application actually reads, filters, counts, publishes and reacts to is the <strong>batched metadata</strong> that <code>Gst-nvstreammux</code> attaches to every buffer and that every downstream element enriches in place.</p>
+    <p>This is the practical consequence of the "zero-copy" architecture from Part 02: because pixels never leave GPU memory, the only cheap, CPU-visible thing riding the pipeline is metadata &mdash; small, structured, and designed to be walked from a single C or Python callback. Understanding this graph is understanding how to write a DeepStream application at all.</p>
+    <div class="callout">
+        <div class="callout-label">Why it matters</div>
+        <p>Almost every line of custom DeepStream application code &mdash; drawing a custom overlay, filtering detections by class, counting objects, publishing an event &mdash; is a read or write against this metadata graph, not a CUDA kernel. Get the hierarchy right and the rest of the SDK becomes approachable.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>The NvDsBatchMeta hierarchy</h2>
+    <p>A single <code>GstBuffer</code> carries two separate things once it leaves <code>nvstreammux</code>: the pixel data (an <strong>NvBufSurface</strong>) and a parallel metadata tree rooted at <strong>NvDsBatchMeta</strong>, retrieved with <code>gst_buffer_get_nvds_batch_meta()</code>. Every plugin after the muxer adds to this tree rather than replacing it &mdash; the tracker stamps <code>object_id</code>, an SGIE hangs a classifier result off each object, and analytics plugins attach their own user metadata.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 460" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p6a-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+                .p6a-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
+                .p6a-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p6a-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p6a-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9.5px;text-anchor:middle;}
+                .p6a-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+                .p6a-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p6a-arrowhead);}
+                .p6a-dasharrow{stroke:#8b949e;stroke-width:1.3;fill:none;stroke-dasharray:3,3;marker-end:url(#p6a-arrowhead2);}
+            </style>
+            <defs>
+                <marker id="p6a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+                <marker id="p6a-arrowhead2" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#8b949e"/>
+                </marker>
+            </defs>
+            <text class="p6a-title" x="10" y="16">One GstBuffer, two parallel structures</text>
+
+            <rect class="p6a-box" x="290" y="10" width="140" height="32" rx="6"/>
+            <text class="p6a-label" x="360" y="30">GstBuffer</text>
+            <path class="p6a-dasharrow" d="M430,26 L538,40"/>
+            <rect class="p6a-box" x="540" y="10" width="170" height="60" rx="6"/>
+            <text class="p6a-label" x="625" y="34">NvBufSurface</text>
+            <text class="p6a-caption" x="625" y="50">pixels &middot; GPU-resident</text>
+            <text class="p6a-caption" x="625" y="62">read via nvvideoconvert etc.</text>
+
+            <path class="p6a-arrow" d="M360,42 L360,66"/>
+            <rect class="p6a-accent" x="270" y="68" width="180" height="40" rx="6"/>
+            <text class="p6a-accentlabel" x="360" y="88">NvDsBatchMeta</text>
+            <text class="p6a-caption" x="360" y="101">root &middot; built by nvstreammux</text>
+
+            <path class="p6a-arrow" d="M360,108 L360,130"/>
+            <rect class="p6a-box" x="230" y="132" width="260" height="46" rx="6"/>
+            <text class="p6a-label" x="360" y="152">NvDsFrameMeta [ ]</text>
+            <text class="p6a-caption" x="360" y="168">source_id &middot; frame_num &middot; num_obj_meta</text>
+
+            <path class="p6a-arrow" d="M330,178 L150,210"/>
+            <path class="p6a-arrow" d="M360,178 L355,210"/>
+            <path class="p6a-arrow" d="M400,178 L560,210"/>
+
+            <rect class="p6a-box" x="30" y="212" width="220" height="46" rx="6"/>
+            <text class="p6a-label" x="140" y="232">NvDsObjectMeta [ ]</text>
+            <text class="p6a-caption" x="140" y="248">object_id &middot; class_id &middot; rect_params</text>
+            <text class="p6a-caption" x="105" y="204">object_id set by nvtracker</text>
+
+            <rect class="p6a-box" x="270" y="212" width="170" height="46" rx="6"/>
+            <text class="p6a-label" x="355" y="232">NvDsDisplayMeta</text>
+            <text class="p6a-caption" x="355" y="248">lines/text/rects to draw</text>
+
+            <rect class="p6a-box" x="460" y="212" width="230" height="46" rx="6"/>
+            <text class="p6a-label" x="575" y="232">NvDsUserMeta (frame)</text>
+            <text class="p6a-caption" x="575" y="248">e.g. NvDsAnalyticsFrameMeta</text>
+
+            <path class="p6a-arrow" d="M115,258 L105,300"/>
+            <path class="p6a-arrow" d="M180,258 L320,300"/>
+
+            <rect class="p6a-box" x="10" y="302" width="190" height="46" rx="6"/>
+            <text class="p6a-label" x="105" y="322">NvDsClassifierMeta</text>
+            <text class="p6a-caption" x="105" y="338">added by SGIE (nvinfer)</text>
+
+            <rect class="p6a-box" x="220" y="302" width="230" height="46" rx="6"/>
+            <text class="p6a-label" x="335" y="322">NvDsUserMeta (object)</text>
+            <text class="p6a-caption" x="335" y="338">e.g. NvDsAnalyticsObjInfo</text>
+
+            <path class="p6a-arrow" d="M105,348 L120,390"/>
+            <rect class="p6a-box" x="10" y="392" width="270" height="46" rx="6"/>
+            <text class="p6a-label" x="145" y="412">NvDsLabelInfo [ ]</text>
+            <text class="p6a-caption" x="145" y="428">result_class_id &middot; result_label &middot; result_prob</text>
+        </svg>
+    </div>
+    <p>The tree grows &mdash; it is never rebuilt. Each object's <code>classifier_meta_list</code> can carry results from several SGIEs; each frame or object can carry several independent <code>NvDsUserMeta</code> entries side by side.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>The fields that matter</h2>
+    <p>Most application code only ever touches a handful of fields across three structures. These are the ones worth memorising.</p>
+    <div class="table-wrap">
+        <table>
+            <tr><th>Struct</th><th>Field</th><th>What it's for</th></tr>
+            <tr><td rowspan="3">NvDsFrameMeta</td><td><code>source_id</code></td><td>which input stream (0..N&minus;1) this frame came from, post-mux</td></tr>
+            <tr><td><code>frame_num</code></td><td>decoder frame index for that source &mdash; ordering and de-duplication</td></tr>
+            <tr><td><code>num_obj_meta</code></td><td>count of entries in this frame's <code>obj_meta_list</code></td></tr>
+            <tr><td rowspan="5">NvDsObjectMeta</td><td><code>object_id</code></td><td>stable track identity, set by nvtracker (unset upstream of it)</td></tr>
+            <tr><td><code>class_id</code></td><td>the detector's class index, e.g. <code>0</code> = Person</td></tr>
+            <tr><td><code>confidence</code></td><td>the detector's score for this bounding box</td></tr>
+            <tr><td><code>rect_params</code></td><td>bbox left/top/width/height, in frame pixel coordinates</td></tr>
+            <tr><td><code>obj_label</code></td><td>human-readable class string, e.g. <code>"Person"</code></td></tr>
+            <tr><td rowspan="3">NvDsClassifierMeta / NvDsLabelInfo</td><td><code>result_class_id</code></td><td>SGIE's predicted class index for this object</td></tr>
+            <tr><td><code>result_label</code></td><td>SGIE's predicted class string, e.g. <code>"red_sedan"</code></td></tr>
+            <tr><td><code>result_prob</code></td><td>SGIE's confidence for that predicted label</td></tr>
+        </table>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Lifecycle &amp; pools</h2>
+    <p>Metadata objects are never <code>malloc</code>'d ad hoc. They are acquired from <strong>pre-allocated pools</strong> owned by the batch meta &mdash; <code>nvds_acquire_frame_meta_from_pool()</code>, <code>nvds_acquire_obj_meta_from_pool()</code>, <code>nvds_acquire_user_meta_from_pool()</code> &mdash; attached to the tree, reference-counted as the buffer flows through multiple threads and plugins, and returned to the pool once the buffer is done with, rather than freed to the heap.</p>
+    <p>This is what makes metadata safe and cheap at video rates: no per-frame heap churn, no allocator contention between pipeline threads, and a bounded, predictable memory footprint set by the pool size at <code>nvstreammux</code> configuration time. When you attach custom data via <strong>NvDsUserMeta</strong>, you plug into the same discipline &mdash; the struct itself carries a <code>meta_type</code>, a <code>user_meta_data</code> pointer, and a <code>copy_func</code>/<code>release_func</code> pair so the pool machinery knows how to duplicate or tear down your payload without knowing what it is.</p>
+    <div class="callout">
+        <div class="callout-label">Golden rule</div>
+        <p>Always acquire metadata through the pool APIs, never <code>malloc</code> or <code>new</code> it directly and attach the pointer. Hand-rolled allocations bypass the ref-counting and lifetime guarantees the whole metadata system depends on &mdash; the classic symptom is a crash or corrupted frame under load that never shows up in light testing.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Accessing metadata &mdash; buffer probes</h2>
+    <p>Applications read and modify the metadata graph through a <strong>buffer probe</strong>: a callback attached to a pad (commonly the tracker's or an SGIE's src pad) that fires on every buffer crossing it. Inside the probe you pull <code>NvDsBatchMeta</code> off the buffer and walk <code>frame_meta_list</code> &rarr; <code>obj_meta_list</code> as a linked list.</p>
+    <div class="code-block">
+        <div class="code-header">tracker_probe.py</div>
+        <pre><code><span class="kw">def</span> <span class="fn">tracker_src_pad_probe</span>(pad, info, u_data):
+    gst_buffer = info.get_buffer()
+    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(<span class="fn">hash</span>(gst_buffer))
+
+    l_frame = batch_meta.frame_meta_list
+    <span class="kw">while</span> l_frame <span class="kw">is not</span> <span class="kw">None</span>:
+        frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+        l_obj = frame_meta.obj_meta_list
+        <span class="kw">while</span> l_obj <span class="kw">is not</span> <span class="kw">None</span>:
+            obj = pyds.NvDsObjectMeta.cast(l_obj.data)
+            <span class="fn">print</span>(<span class="str">f"src={frame_meta.source_id} id={obj.object_id} "</span>
+                  <span class="str">f"class={obj.class_id} conf={obj.confidence:.2f}"</span>)
+            <span class="kw">try</span>:
+                l_obj = l_obj.next
+            <span class="kw">except</span> <span class="type">StopIteration</span>:
+                <span class="kw">break</span>
+        <span class="kw">try</span>:
+            l_frame = l_frame.next
+        <span class="kw">except</span> <span class="type">StopIteration</span>:
+            <span class="kw">break</span>
+    <span class="kw">return</span> Gst.PadProbeReturn.OK</code></pre>
+    </div>
+    <div class="code-block">
+        <div class="code-header">tracker_probe.c</div>
+        <pre><code><span class="kw">static</span> GstPadProbeReturn
+<span class="fn">tracker_src_pad_probe</span>(GstPad *pad, GstPadProbeInfo *info, gpointer u_data)
+{
+    GstBuffer *buf = (GstBuffer *)info-&gt;data;
+    NvDsBatchMeta *batch_meta = <span class="fn">gst_buffer_get_nvds_batch_meta</span>(buf);
+
+    <span class="kw">for</span> (NvDsMetaList *l = batch_meta-&gt;frame_meta_list; l; l = l-&gt;next) {
+        NvDsFrameMeta *frame_meta = (NvDsFrameMeta *)l-&gt;data;
+        <span class="kw">for</span> (NvDsMetaList *o = frame_meta-&gt;obj_meta_list; o; o = o-&gt;next) {
+            NvDsObjectMeta *obj = (NvDsObjectMeta *)o-&gt;data;
+            <span class="fn">g_print</span>(<span class="str">"src=%d id=%lu class=%d conf=%.2f\n"</span>,
+                    frame_meta-&gt;source_id, obj-&gt;object_id,
+                    obj-&gt;class_id, obj-&gt;confidence);
+        }
+    }
+    <span class="kw">return</span> GST_PAD_PROBE_OK;
+}</code></pre>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Extending it &mdash; NvDsUserMeta</h2>
+    <p>The metadata graph is deliberately open-ended. Any plugin or application can hang its own payload off a frame or an object via <strong>NvDsUserMeta</strong>, without the SDK needing to know what that payload means.</p>
+    <ul>
+        <li><strong>meta_type</strong> &mdash; an integer identifying the payload's kind; custom types must start at or above <code>NVDS_START_USER_META</code> so they never collide with the framework's own reserved values.</li>
+        <li><strong>user_meta_data</strong> &mdash; an opaque pointer to your payload, acquired from the batch meta's user-meta pool via <code>nvds_acquire_user_meta_from_pool()</code>.</li>
+        <li><strong>copy_func</strong> / <strong>release_func</strong> &mdash; you supply these so the pool machinery can duplicate or free your payload correctly during batch-meta copy and recycle &mdash; the same discipline as every other pooled struct.</li>
+        <li><strong>Two attach points</strong> &mdash; frame-level (<code>nvds_add_user_meta_to_frame</code>) for scene-wide results, object-level (<code>nvds_add_user_meta_to_obj</code>) for per-track results.</li>
+        <li><strong>In practice</strong> &mdash; <code>nvinfer</code>'s <code>output-tensor-meta</code> property attaches raw, unparsed inference tensors this way; <code>nvdsanalytics</code> attaches its rule results this way; applications use it to carry state (an event ID, a computed score) forward as far as <code>nvmsgconv</code>, which reads user meta to build custom message payloads.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Gst-nvdsanalytics &mdash; rules on tracks</h2>
+    <p><code>Gst-nvdsanalytics</code> sits after the tracker and evaluates simple, declarative spatial rules against tracked objects &mdash; all defined per-stream in a config file, with no code required. Four rule types: <strong>ROI filtering</strong> (only objects inside a polygon count downstream), <strong>line-crossing</strong> counting with direction, <strong>overcrowding</strong> (occupancy of a region against a threshold), and <strong>direction detection</strong> (which way a track is moving).</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 335" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p6b-frame{fill:#0d1117;stroke:#21262d;stroke-width:1;}
+                .p6b-roi{fill:rgba(118,185,0,0.07);stroke:#76B900;stroke-width:1.5;stroke-dasharray:4,3;}
+                .p6b-crowd{fill:rgba(255,166,87,0.08);stroke:#ffa657;stroke-width:1.5;stroke-dasharray:4,3;}
+                .p6b-dot{fill:#76B900;}
+                .p6b-crowddot{fill:#ffa657;}
+                .p6b-line{stroke:#76B900;stroke-width:2;fill:none;}
+                .p6b-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p6b-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p6b-warnlabel{fill:#ffa657;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p6b-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9.5px;text-anchor:middle;}
+                .p6b-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;text-anchor:middle;}
+                .p6b-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p6b-arrowhead);}
+            </style>
+            <defs>
+                <marker id="p6b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <rect class="p6b-frame" x="30" y="20" width="660" height="260" rx="8"/>
+            <text class="p6b-caption" x="80" y="38" text-anchor="start">tracked scene &mdash; post-nvtracker</text>
+
+            <polygon class="p6b-roi" points="90,55 300,60 285,190 65,175"/>
+            <text class="p6b-accentlabel" x="185" y="85">ROI zone</text>
+            <text class="p6b-caption" x="185" y="99">outside &rarr; filtered from analytics</text>
+            <circle class="p6b-dot" cx="150" cy="130" r="4"/>
+            <text class="p6b-caption" x="150" y="120">id 12</text>
+            <circle class="p6b-dot" cx="230" cy="150" r="4"/>
+            <text class="p6b-caption" x="230" y="140">id 47</text>
+
+            <rect class="p6b-crowd" x="420" y="150" width="230" height="90" rx="6"/>
+            <text class="p6b-warnlabel" x="535" y="175">overcrowding</text>
+            <text class="p6b-caption" x="535" y="190">occupancy 9 &ge; threshold 8 &rarr; alert</text>
+            <circle class="p6b-crowddot" cx="460" cy="215" r="4"/>
+            <circle class="p6b-crowddot" cx="490" cy="225" r="4"/>
+            <circle class="p6b-crowddot" cx="520" cy="212" r="4"/>
+            <circle class="p6b-crowddot" cx="550" cy="222" r="4"/>
+            <circle class="p6b-crowddot" cx="580" cy="228" r="4"/>
+            <circle class="p6b-crowddot" cx="610" cy="216" r="4"/>
+
+            <path class="p6b-line" d="M60,265 L610,265"/>
+            <path class="p6b-arrow" d="M330,245 L330,278"/>
+            <text class="p6b-accentlabel" x="330" y="235">line A</text>
+            <text class="p6b-caption" x="330" y="300">143 crossings &darr; &middot; 12 &uarr;</text>
+
+            <text class="p6b-title" x="360" y="320">ROI filter + line-crossing + overcrowding &mdash; config-driven, per stream</text>
+        </svg>
+    </div>
+    <p>Results attach as user meta, not as a new detection type: per-object <strong>NvDsAnalyticsObjInfo</strong> (which ROI it's in, its crossing/direction state) and per-frame <strong>NvDsAnalyticsFrameMeta</strong> (aggregate counts, overcrowding status) &mdash; both readable from the same probe pattern as any other metadata.</p>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>From metadata to action</h2>
+    <p>Everything downstream of the tracker is, in the end, a consumer of this graph. <code>Gst-nvdsosd</code> reads <code>NvDsDisplayMeta</code>/<code>NvDsObjectMeta</code> to draw boxes, labels and lines &mdash; it never inspects pixels to find objects, it's told exactly where they are. <code>Gst-nvmsgconv</code> reads frame and object meta (plus any user meta an app or analytics plugin has attached) and serialises it into an event payload, the subject of Part 07. And your own probe can inspect the same graph to trigger smart-record clip capture or arbitrary custom application logic.</p>
+    <div class="diagram-flow">
+        <div class="diagram-box accent">NvDsBatchMeta</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">nvdsosd draw</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">nvmsgconv payload</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box">smart-record trigger</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box dim">custom app logic</div>
+    </div>
+    <p>None of these consumers are mutually exclusive &mdash; a single probe on a single pad can drive all four at once, since they're all just reads (and occasional writes) against the same tree.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Takeaways</h2>
+    <ul>
+        <li>The pipeline's real product is the <strong>NvDsBatchMeta &rarr; NvDsFrameMeta &rarr; NvDsObjectMeta &rarr; NvDsClassifierMeta</strong> hierarchy, built by nvstreammux and enriched by every plugin after it; pixels live separately in NvBufSurface.</li>
+        <li>Metadata comes from <strong>pools, never <code>malloc</code></strong> &mdash; that's what keeps it safe and cheap at video rates across multiple threads.</li>
+        <li>The <strong>buffer probe</strong> attached to a pad is your API into the graph, in both C and Python (pyds) &mdash; walk <code>frame_meta_list</code> then <code>obj_meta_list</code>.</li>
+        <li><strong>NvDsUserMeta</strong> is the extension point &mdash; raw tensors, analytics results, or your own application state, all carried the same way with a <code>meta_type</code> and copy/release functions.</li>
+        <li><strong>Gst-nvdsanalytics</strong> turns tracked objects into rule-based events &mdash; ROI, line-crossing, overcrowding, direction &mdash; entirely from config, attached as user meta like everything else.</li>
+    </ul>
+</section>
+
+<nav class="deck-nav"><a href="part5.html">&larr; Part 05 · Multi-Object Tracking</a><a href="index.html">Index</a><a class="next" href="part7.html">Part 07 · Messaging &amp; IoT &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

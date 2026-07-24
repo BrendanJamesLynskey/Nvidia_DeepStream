@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 08 &mdash; Building &amp; Deploying</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream · Part 08</div>
+    <h1>From Config File to <span class="accent">Production</span></h1>
+    <p class="subtitle">Everything in this series so far — plugins, inference, tracking, metadata, messaging — has to be assembled into a pipeline and shipped somewhere it actually runs. DeepStream gives you four ways to do the assembling, from a text config file to a visual graph editor, and a well-trodden path to containerise, deploy and tune the result for maximum streams-per-GPU.</p>
+    <div class="tags">
+        <span class="tag">deepstream-app</span>
+        <span class="tag">C/C++</span>
+        <span class="tag">Python pyds</span>
+        <span class="tag">Service Maker</span>
+        <span class="tag">Graph Composer</span>
+        <span class="tag">NGC</span>
+        <span class="tag">Kubernetes</span>
+        <span class="tag">Perf Tuning</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Contents</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Four ways to build</a></li>
+        <li><a href="#slide-02">The config-driven reference app</a></li>
+        <li><a href="#slide-03">The C/C++ path</a></li>
+        <li><a href="#slide-04">The Python path</a></li>
+        <li><a href="#slide-05">Graph Composer &amp; GXF</a></li>
+        <li><a href="#slide-06">Packaging &amp; deployment</a></li>
+        <li><a href="#slide-07">Performance tuning</a></li>
+        <li><a href="#slide-08">Debugging &amp; observability</a></li>
+        <li><a href="#slide-09">Series wrap-up</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Four ways to build</h2>
+    <p>Every DeepStream pipeline is the same GStreamer graph underneath — <code>nvstreammux &rarr; nvinfer &rarr; nvtracker &rarr; nvinfer &rarr; nvdsosd &rarr; sink</code>, with variations. What differs is how much of that graph you author by hand, in what language, and how quickly you can iterate. Four entry points cover essentially every use case.</p>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>deepstream-app (config file)</h4>
+            <p>No code at all — a text config file with <code>[source]</code>, <code>[streammux]</code>, <code>[primary-gie]</code>, <code>[sink]</code> groups drives the reference application. Fastest path to a working multi-stream pipeline; the natural default for standard detect &rarr; track &rarr; classify &rarr; display flows.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>C/C++</h4>
+            <p>Direct GStreamer + DeepStream API calls — <code>gst_element_factory_make</code>, property setters, pad probes. Maximum control and the lowest overhead; the only path when you need custom elements, tight latency budgets, or behaviour the config file can't express.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Python (pyds)</h4>
+            <p>The same GStreamer graph built via <code>gst-python</code>, with metadata read and written through the <strong>pyds</strong> bindings. Rapid prototyping and metadata-heavy logic — the natural choice when the interesting work is in the probe callback, not the pipeline topology.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Graph Composer / Service Maker</h4>
+            <p>A visual low-code editor over the <strong>GXF</strong> runtime for graph-based authoring, or the <strong>Service Maker</strong> API for building a pipeline in a handful of lines (C++, and Python since 7.1). Visual iteration or minimal boilerplate over raw GStreamer plumbing.</p>
+        </div>
+    </div>
+    <div class="callout">
+        <div class="callout-label">In practice</div>
+        <p>Most teams start with <code>deepstream-app</code> to validate the pipeline shape and models, then drop to C/C++ or Python only for the parts that need custom logic — a full hand-rolled pipeline from scratch is rarely the first move.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>The config-driven reference app</h2>
+    <p><code>deepstream-app -c config.txt</code> is the sample application that ships with the SDK, and it is capable enough to be a production deployment on its own — no code is compiled. It reads a single INI-style file where each <code>[group]</code> configures one part of the pipeline it builds internally: sources, mux, inference engines, tracker, on-screen display, tiling and sinks.</p>
+    <div class="code-block">
+        <div class="code-header">deepstream_app_config.txt</div>
+        <pre><code>[application]
+enable-perf-measurement=1
+perf-measurement-interval-sec=5
+
+[source0]
+enable=1
+type=3                        <span class="cm"># 3 = RTSP</span>
+uri=rtsp://192.168.1.50:554/stream1
+num-sources=1
+
+[streammux]
+batch-size=4                  <span class="cm"># == number of active sources</span>
+batched-push-timeout=40000    <span class="cm"># microseconds</span>
+width=1920
+height=1080
+live-source=1
+
+[primary-gie]
+enable=1
+gpu-id=0
+batch-size=4
+interval=0                    <span class="cm"># run inference every frame</span>
+config-file=config_infer_primary.txt
+
+[tracker]
+enable=1
+tracker-width=640
+tracker-height=384
+ll-lib-file=/opt/nvidia/deepstream/deepstream/lib/libnvds_nvmultiobjecttracker.so
+ll-config-file=config_tracker_NvSORT.yml
+
+[secondary-gie0]
+enable=1
+gpu-id=0
+batch-size=16
+gie-unique-id=2
+operate-on-gie-id=1
+config-file=config_infer_secondary_classifier.txt
+
+[tiled-display]
+enable=1
+rows=2
+columns=2
+width=1280
+height=720
+
+[osd]
+enable=1
+gpu-id=0
+
+[sink0]
+enable=1
+type=2                        <span class="cm"># 2 = EGL / display sink</span>
+sync=0
+
+[tests]
+file-loop=0</code></pre>
+    </div>
+    <p>Multiple <code>[sourceN]</code>, <code>[secondary-gieN]</code> and <code>[sinkN]</code> groups compose freely — a four-camera, two-classifier, tiled-and-recorded deployment is still just more groups in the same file, no recompilation required.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>The C/C++ path</h2>
+    <p>Below the config file is the same API the reference app itself is built on: standard GStreamer element creation and linking, plus DeepStream-specific elements and metadata structures. A minimal pipeline is a handful of calls — create elements, set properties, link them, attach a <strong>pad probe</strong> to read <code>NvDsBatchMeta</code>, and run a <code>GMainLoop</code>.</p>
+    <div class="code-block">
+        <div class="code-header">deepstream_test1_app.c (skeleton)</div>
+        <pre><code>#include &lt;gst/gst.h&gt;
+#include &lt;gstnvdsmeta.h&gt;
+
+<span class="type">int</span> main(<span class="type">int</span> argc, <span class="type">char</span> *argv[]) {
+    GstElement *pipeline, *source, *mux, *pgie, *tracker, *osd, *sink;
+    GMainLoop  *loop;
+
+    gst_init(&amp;argc, &amp;argv);
+    loop = g_main_loop_new(NULL, FALSE);
+
+    pipeline = gst_pipeline_new(<span class="str">"ds-pipeline"</span>);
+    source   = gst_element_factory_make(<span class="str">"uridecodebin"</span>, <span class="str">"src"</span>);
+    mux      = gst_element_factory_make(<span class="str">"nvstreammux"</span>, <span class="str">"mux"</span>);
+    pgie     = gst_element_factory_make(<span class="str">"nvinfer"</span>, <span class="str">"pgie"</span>);
+    tracker  = gst_element_factory_make(<span class="str">"nvtracker"</span>, <span class="str">"tracker"</span>);
+    osd      = gst_element_factory_make(<span class="str">"nvdsosd"</span>, <span class="str">"osd"</span>);
+    sink     = gst_element_factory_make(<span class="str">"nveglglessink"</span>, <span class="str">"sink"</span>);
+
+    g_object_set(G_OBJECT(mux), <span class="str">"batch-size"</span>, 1, <span class="str">"width"</span>, 1920, <span class="str">"height"</span>, 1080, NULL);
+    g_object_set(G_OBJECT(pgie), <span class="str">"config-file-path"</span>, <span class="str">"pgie_config.txt"</span>, NULL);
+
+    gst_bin_add_many(GST_BIN(pipeline), source, mux, pgie, tracker, osd, sink, NULL);
+    gst_element_link_many(mux, pgie, tracker, osd, sink, NULL);
+
+    <span class="cm">/* probe reads NvDsBatchMeta off every buffer reaching the OSD */</span>
+    GstPad *sink_pad = gst_element_get_static_pad(osd, <span class="str">"sink"</span>);
+    gst_pad_add_probe(sink_pad, GST_PAD_PROBE_TYPE_BUFFER, osd_sink_pad_buffer_probe, NULL, NULL);
+
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    g_main_loop_run(loop);
+}</code></pre>
+    </div>
+    <p>The sample apps <code>deepstream-test1</code> through <code>deepstream-test5</code> are the canonical learning ladder for this path: <strong>test1</strong> is single-stream detection, escalating through multi-source muxing, tracking, and secondary classification, to <strong>test4</strong> which adds an <code>nvmsgconv</code>/<code>nvmsgbroker</code> pair for schema payloads and IoT delivery, and <strong>test5</strong> which assembles a config-driven, production-shaped application with all of the above.</p>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>The Python path</h2>
+    <p>The Python bindings — <strong>pyds</strong> — expose the same <code>NvDsBatchMeta</code>/<code>NvDsFrameMeta</code>/<code>NvDsObjectMeta</code> structures used in C, wrapped for access from a <code>gst-python</code> pipeline. The pipeline-building code looks almost identical to the C version; the payoff is in the probe callback, where Python's ergonomics make metadata-heavy logic — the pattern covered in Part 06 — much faster to write and iterate on.</p>
+    <div class="code-block">
+        <div class="code-header">deepstream_test1.py (probe excerpt)</div>
+        <pre><code><span class="kw">import</span> pyds
+
+<span class="kw">def</span> <span class="fn">osd_sink_pad_buffer_probe</span>(pad, info, u_data):
+    gst_buffer = info.get_buffer()
+    batch_meta = pyds.gst_buffer_get_nvds_batch_meta(<span class="fn">hash</span>(gst_buffer))
+
+    l_frame = batch_meta.frame_meta_list
+    <span class="kw">while</span> l_frame <span class="kw">is</span> <span class="kw">not</span> None:
+        frame_meta = pyds.NvDsFrameMeta.cast(l_frame.data)
+        l_obj = frame_meta.obj_meta_list
+        <span class="kw">while</span> l_obj <span class="kw">is</span> <span class="kw">not</span> None:
+            obj_meta = pyds.NvDsObjectMeta.cast(l_obj.data)
+            <span class="fn">print</span>(f<span class="str">"id={obj_meta.object_id} class={obj_meta.class_id}"</span>)
+            l_obj = l_obj.next
+        l_frame = l_frame.next
+    <span class="kw">return</span> Gst.PadProbeReturn.OK</code></pre>
+    </div>
+    <p>The <code>deepstream_python_apps</code> repository mirrors the C test-app ladder and is the primary reference. The trade-off against C/C++ is the usual one: faster to write and easier to debug, but the pipeline's steady-state throughput is set by the native GStreamer/TensorRT elements either way — Python cost only shows up in the probe, where the GIL and per-call binding overhead matter if you're doing heavy per-object work at high batch size and frame rate.</p>
+    <p>Since DeepStream 7.1, <strong>Service Maker</strong> is also available in Python, not just C++: a higher-level abstraction over raw GStreamer that builds a working pipeline — sources, inference, tracker, sink — in a handful of method calls rather than manual element creation and linking, for teams that want less boilerplate without leaving Python.</p>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Graph Composer &amp; GXF</h2>
+    <p><strong>Graph Composer</strong> is a visual, low-code editor for building DeepStream pipelines as graphs rather than code or config text: drag components onto a canvas, wire their ports together, and edit parameters in a property panel. Underneath, it targets the <strong>GXF</strong> (Graph Execution Framework) runtime — a component-based execution engine with its own extension model — so a Graph Composer graph is a GXF graph with DeepStream-specific extensions (source, inference, tracker, OSD components) registered into it.</p>
+    <div class="diagram-flow">
+        <div class="diagram-box dim">design graph<br>(Graph Composer canvas)</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">GXF graph<br>+ extensions</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">container builder</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box dim">deploy to Jetson<br>or dGPU target</div>
+    </div>
+    <p>The built-in <strong>container builder</strong> packages the finished graph, its extensions and dependencies into a deployable container image targeting a specific platform — Jetson (JetPack) or discrete GPU — closing the loop from visual authoring to a shippable artefact without a separate manual Docker build. It's the right tool when a graph-native, visual iteration workflow matters more than hand-written pipeline code, or when non-programmers on a team need to compose and tune pipelines directly.</p>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Packaging &amp; deployment</h2>
+    <p>Whichever way the pipeline was built, it ships the same way most GPU workloads do: as a container, pulled from <strong>NGC</strong> (<code>nvcr.io/nvidia/deepstream</code>), with the model repository and TensorRT engine files either baked into the image or mounted at runtime so engines can be rebuilt per-target without a new image.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 260" width="720" height="260" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p8a-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p8a-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p8a-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p8a-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p8a-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p8a-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p8a-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p8a-arrowhead); }
+            </style>
+            <defs>
+                <marker id="p8a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="20" class="p8a-title">One image, two deployment targets</text>
+
+            <rect x="10" y="40" width="160" height="55" rx="6" class="p8a-accent"/>
+            <text x="90" y="62" class="p8a-accentlabel">NGC container</text>
+            <text x="90" y="78" class="p8a-caption">nvcr.io/nvidia/deepstream</text>
+
+            <line x1="170" y1="55" x2="230" y2="55" class="p8a-arrow"/>
+            <line x1="170" y1="80" x2="230" y2="115" class="p8a-arrow"/>
+
+            <rect x="232" y="30" width="160" height="50" rx="6" class="p8a-box"/>
+            <text x="312" y="50" class="p8a-label">Docker / dGPU host</text>
+            <text x="312" y="66" class="p8a-caption">workstation, server, cloud VM</text>
+
+            <rect x="232" y="98" width="160" height="50" rx="6" class="p8a-box"/>
+            <text x="312" y="118" class="p8a-label">Jetson + JetPack</text>
+            <text x="312" y="134" class="p8a-caption">L4T-matched container</text>
+
+            <line x1="392" y1="55" x2="452" y2="55" class="p8a-arrow"/>
+            <line x1="392" y1="123" x2="452" y2="123" class="p8a-arrow"/>
+
+            <rect x="454" y="30" width="130" height="50" rx="6" class="p8a-accent"/>
+            <text x="519" y="50" class="p8a-accentlabel">Kubernetes</text>
+            <text x="519" y="66" class="p8a-caption">Helm chart, multi-GPU</text>
+
+            <rect x="454" y="98" width="130" height="50" rx="6" class="p8a-box"/>
+            <text x="519" y="118" class="p8a-label">standalone</text>
+            <text x="519" y="134" class="p8a-caption">edge device, one stream</text>
+
+            <line x1="584" y1="55" x2="640" y2="55" class="p8a-arrow"/>
+
+            <rect x="642" y="30" width="70" height="50" rx="6" class="p8a-box"/>
+            <text x="677" y="50" class="p8a-label" style="font-size:10px;">Metropolis</text>
+            <text x="677" y="64" class="p8a-caption">micro-</text>
+            <text x="677" y="76" class="p8a-caption">services</text>
+
+            <rect x="10" y="170" width="700" height="70" rx="6" class="p8a-box"/>
+            <text x="360" y="192" class="p8a-title" style="font-size:11px;">Model repository</text>
+            <text x="360" y="212" class="p8a-caption">.onnx / TensorRT .engine files &mdash; baked into the image for reproducible, offline-capable deployment,</text>
+            <text x="360" y="228" class="p8a-caption">or mounted from a volume so engines rebuild per-GPU target without a fresh image push</text>
+        </svg>
+    </div>
+    <p>On Jetson, the container's L4T/JetPack version must match the board's flashed JetPack release — this is the single most common "it worked on my dGPU box but not the Jetson" failure. At larger scale, <strong>Kubernetes with Helm charts</strong> handles multi-node, multi-GPU orchestration and restart/scaling policy, and <strong>Metropolis Microservices</strong> packages common DeepStream pipeline patterns as ready-to-compose services (API-fronted, multi-stream) for teams that don't want to own pipeline code at all. Multi-GPU scale-out is then just more replicas — each pipeline instance owns a fixed set of streams and a <code>gpu-id</code>, and the orchestration layer handles placement.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 300" width="720" height="300" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p8b-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p8b-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p8b-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
+                .p8b-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
+                .p8b-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p8b-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p8b-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p8b-arrowhead); }
+                .p8b-dash { stroke:#76B900; stroke-width:1.5; stroke-dasharray:4 3; fill:none; marker-end:url(#p8b-arrowhead); }
+            </style>
+            <defs>
+                <marker id="p8b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="18" class="p8b-title">Deployment topology: one image, three targets</text>
+
+            <rect x="270" y="30" width="180" height="50" rx="6" class="p8b-accent"/>
+            <text x="360" y="50" class="p8b-accentlabel">NGC container image</text>
+            <text x="360" y="66" class="p8b-caption">nvcr.io/nvidia/deepstream:latest</text>
+
+            <line x1="310" y1="80" x2="115" y2="110" class="p8b-arrow"/>
+            <line x1="355" y1="80" x2="385" y2="110" class="p8b-arrow"/>
+            <line x1="410" y1="80" x2="638" y2="110" class="p8b-arrow"/>
+
+            <rect x="10" y="112" width="190" height="55" rx="6" class="p8b-box"/>
+            <text x="105" y="134" class="p8b-label">Jetson edge device</text>
+            <text x="105" y="150" class="p8b-caption">JetPack / L4T runtime</text>
+
+            <rect x="220" y="112" width="330" height="128" rx="6" class="p8b-box"/>
+            <text x="385" y="130" class="p8b-accentlabel">Kubernetes cluster (Helm)</text>
+            <rect x="235" y="142" width="90" height="45" rx="4" class="p8b-accent"/>
+            <text x="280" y="160" class="p8b-label" style="font-size:10.5px;">pod</text>
+            <text x="280" y="174" class="p8b-caption">DS replica</text>
+            <rect x="335" y="142" width="90" height="45" rx="4" class="p8b-accent"/>
+            <text x="380" y="160" class="p8b-label" style="font-size:10.5px;">pod</text>
+            <text x="380" y="174" class="p8b-caption">DS replica</text>
+            <rect x="435" y="142" width="90" height="45" rx="4" class="p8b-accent"/>
+            <text x="480" y="160" class="p8b-label" style="font-size:10.5px;">pod</text>
+            <text x="480" y="174" class="p8b-caption">DS replica</text>
+            <text x="385" y="205" class="p8b-caption">dGPU server(s) — scale-out via Helm replica count</text>
+            <text x="385" y="220" class="p8b-caption">rolling updates &amp; restart policy managed by the chart</text>
+
+            <rect x="570" y="112" width="140" height="55" rx="6" class="p8b-accent"/>
+            <text x="640" y="134" class="p8b-accentlabel">Metropolis</text>
+            <text x="640" y="150" class="p8b-caption">Microservices</text>
+
+            <rect x="10" y="255" width="540" height="40" rx="6" class="p8b-box"/>
+            <text x="280" y="272" class="p8b-label">Shared model / engine repository</text>
+            <text x="280" y="288" class="p8b-caption">mounted volume — same .engine files across every pod &amp; edge device</text>
+
+            <line x1="105" y1="255" x2="105" y2="169" class="p8b-dash"/>
+            <line x1="385" y1="255" x2="385" y2="242" class="p8b-dash"/>
+        </svg>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Performance tuning</h2>
+    <p>The metric that matters is rarely single-stream latency in isolation — it's <strong>aggregate streams &times; fps at a latency budget</strong>, and by extension, cost-per-stream on a given GPU. Every knob below trades one of throughput, latency or accuracy for another.</p>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Knob</th><th>Where</th><th>Effect</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>batch-size</code></td><td>nvstreammux, nvinfer</td><td>Should track the number of live streams; under-sized batches waste GPU parallelism, over-sized batches add wait latency for the batch to fill</td></tr>
+                <tr><td><code>interval</code></td><td>nvinfer (PGIE)</td><td>Skip N frames between detector runs; the tracker predicts through the gap. The single biggest lever for headroom on GPU-bound pipelines</td></tr>
+                <tr><td>Precision: FP16 / INT8</td><td>nvinfer engine build</td><td>Roughly 2&times;/4&times; throughput over FP32 on Tensor Core hardware; INT8 needs a calibration cache and costs some accuracy</td></tr>
+                <tr><td>DLA offload</td><td>nvinfer, Jetson only</td><td>Moves inference off the GPU onto the Deep Learning Accelerator, freeing GPU cycles for other pipeline stages — at DLA's own throughput ceiling</td></tr>
+                <tr><td><code>batched-push-timeout</code></td><td>nvstreammux</td><td>Caps how long the muxer waits for a full batch; lower reduces latency on sparse streams, higher improves batch fill on bursty ones</td></tr>
+                <tr><td>mux <code>width</code>/<code>height</code></td><td>nvstreammux</td><td>Sets the common batched resolution; unnecessarily high values inflate every downstream stage's cost for no accuracy gain</td></tr>
+                <tr><td>Tiler / OSD cost</td><td>nvmultistreamtiler, nvdsosd</td><td>Composition and on-screen drawing scale with stream count and resolution — disable or lower-res them for headless/analytics-only deployments</td></tr>
+                <tr><td><code>sync=0</code></td><td>sink</td><td>Disables clock-synchronised playback so the sink drains as fast as the pipeline produces frames — throughput over real-time display fidelity</td></tr>
+            </tbody>
+        </table>
+    </div>
+    <div class="callout">
+        <div class="callout-label">In practice</div>
+        <p>Tune in this order: get precision and <code>interval</code> right first (biggest wins, cheapest to try), then batch-size and mux resolution, then trim tiler/OSD cost for the actual deployment target. Re-measure aggregate streams&times;fps after every change — the interactions between knobs are not always additive.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Debugging &amp; observability</h2>
+    <p>DeepStream inherits GStreamer's debugging toolchain wholesale, plus a few DeepStream-specific instruments for measuring what actually matters at deployment scale.</p>
+    <ul>
+        <li><strong><code>GST_DEBUG</code></strong> — the standard GStreamer log-level environment variable (<code>GST_DEBUG=3</code> for warnings, higher for full trace); the first thing to raise when a pipeline fails to reach PLAYING or drops silently.</li>
+        <li><strong><code>GST_DEBUG_DUMP_DOT_DIR</code></strong> — dumps the live pipeline graph (elements, pads, caps, links) to <code>.dot</code> files at each state change; render with Graphviz to see exactly what topology was actually built, which is invaluable when config-file groups silently fail to wire up.</li>
+        <li><strong><code>gst-inspect-1.0</code></strong> — lists an element's full property set, pad templates and capabilities; the fastest way to check a property name/type before it causes a silent no-op.</li>
+        <li><strong><code>NVDS_ENABLE_LATENCY_MEASUREMENT</code></strong> — enables per-component latency stamping through the pipeline, surfaced via the metadata; combine with the perf-measurement/FPS probe to get both throughput and per-stage latency in one pass.</li>
+        <li><strong><code>trtexec</code></strong> — profiles a standalone TensorRT engine outside the pipeline, useful for isolating whether a slowdown is the inference engine itself or something else in the graph.</li>
+    </ul>
+    <h3>Common pitfalls</h3>
+    <ul>
+        <li><strong>Caps / memory-type mismatch</strong> — an element expecting <code>memory:NVMM</code> (GPU/unified memory) fed from one that outputs system memory; the link fails or silently forces an expensive copy.</li>
+        <li><strong>Unexpected engine rebuilds</strong> — nvinfer rebuilds the TensorRT engine on the fly if the model, precision, or GPU compute-capability doesn't match the cached <code>.engine</code> file, costing minutes of startup latency on first run per target.</li>
+        <li><strong>Batch-size mismatch</strong> — nvstreammux, nvinfer and downstream elements disagreeing on batch size produces truncated or misaligned per-frame metadata rather than an obvious error.</li>
+        <li><strong>Queue placement</strong> — missing <code>queue</code> elements between GPU-bound stages serialise work that should overlap across threads; misplaced ones add buffering latency for no throughput benefit.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Series wrap-up</h2>
+    <p>Eight parts, one arc: from a single frame of pixels to a fleet of GPUs processing thousands of streams in production.</p>
+    <ul class="contents-list">
+        <li>The big picture — why DeepStream exists, and the GPU-resident pipeline model</li>
+        <li>GStreamer architecture — elements, pads, bins, buffers, the bus</li>
+        <li>The DeepStream plugin family — mux, infer, tracker, OSD and friends</li>
+        <li>Inference with <code>nvinfer</code> — engines, precision, batching</li>
+        <li>Tracking — NvMultiObjectTracker's shared module architecture</li>
+        <li>Metadata &amp; analytics — <code>NvDsBatchMeta</code>, probes, <code>nvdsanalytics</code></li>
+        <li>Messaging &amp; IoT — schema payloads, brokers, event delivery</li>
+        <li>Building &amp; deploying — four build paths, containers, tuning</li>
+    </ul>
+    <div class="callout">
+        <div class="callout-label">Where to go next</div>
+        <p>The official <strong>DeepStream documentation</strong> and sample apps are the canonical reference for API detail this series didn't have room for. The <strong>NVIDIA Developer Forums</strong> are the fastest route to answers on version-specific quirks. For custom models, <strong>TAO Toolkit</strong> handles transfer learning and export straight to a DeepStream-ready TensorRT engine. And if the goal is a ready-made service rather than a pipeline you own end-to-end, <strong>Metropolis Microservices</strong> is where NVIDIA is investing next. Build cheap, measure honestly, tune the few knobs that actually move aggregate streams&times;fps — the rest is detail.</p>
+    </div>
+</section>
+
+<nav class="deck-nav"><a href="part7.html">&larr; Part 07 · Messaging &amp; IoT</a><a class="next" href="index.html">Series Index &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

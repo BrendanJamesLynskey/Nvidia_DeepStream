@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NVIDIA DeepStream &mdash; Presentation Series</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a; --bg-card: #0d1117; --bg-code: #161b22;
+            --text-primary: #e6edf3; --text-secondary: #8b949e;
+            --accent: #76B900; --accent-dim: #76B90044; --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 960px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body { background: var(--bg-primary); color: var(--text-primary);
+               font-family: var(--font-body); font-size: 17px; line-height: 1.7;
+               overflow-x: hidden; }
+        .hero { min-height: 62vh; display: flex; flex-direction: column;
+                justify-content: center; align-items: center;
+                padding: 4rem 1.5rem 3rem; text-align: center; position: relative; }
+        .hero::before { content: ''; position: absolute; top: 0; left: 50%;
+                        transform: translateX(-50%); width: 640px; height: 640px;
+                        background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+                        pointer-events: none; z-index: 0; }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label { font-family: var(--font-mono); font-size: 0.85rem;
+                        color: var(--accent); letter-spacing: 0.15em;
+                        text-transform: uppercase; margin-bottom: 1rem; }
+        .hero h1 { font-family: var(--font-display);
+                   font-size: clamp(2rem, 5vw, 3.1rem); font-weight: 700;
+                   color: var(--text-primary); line-height: 1.15; margin-bottom: 1rem; }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle { font-size: 1.1rem; color: var(--text-secondary);
+                          max-width: 740px; margin-bottom: 1.5rem; }
+        .tags { display: flex; flex-wrap: wrap; gap: 0.5rem;
+                justify-content: center; margin-bottom: 1rem; }
+        .tag { font-family: var(--font-mono); font-size: 0.75rem;
+               padding: 0.25rem 0.75rem; border-radius: 999px;
+               border: 1px solid var(--accent); color: var(--accent);
+               background: var(--accent-dim); white-space: nowrap; }
+        .pipeline { display: flex; flex-wrap: wrap; align-items: center;
+                    justify-content: center; gap: 0.25rem; margin-top: 0.5rem;
+                    max-width: var(--max-width); }
+        .pipeline-step { font-family: var(--font-mono); font-size: 0.68rem;
+                         padding: 0.3rem 0.65rem; background: var(--bg-card);
+                         border: 1px solid var(--border); border-radius: 4px;
+                         color: var(--text-secondary); white-space: nowrap; }
+        .pipeline-arrow { color: var(--accent); font-size: 0.85rem; font-weight: 700; }
+        .container { max-width: var(--max-width); margin: 0 auto; padding: 2rem 1.5rem; }
+        h2 { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700;
+             color: var(--accent); margin: 1rem 0 1.25rem; }
+        .lead { color: var(--text-secondary); margin-bottom: 1.5rem; }
+        .lead strong { color: var(--text-primary); }
+        .deck-list { display: flex; flex-direction: column; gap: 0.6rem;
+                     list-style: none; padding: 0; counter-reset: deck; }
+        .deck-card { display: flex; gap: 1rem; padding: 1rem 1.25rem;
+                     background: var(--bg-card); border: 1px solid var(--border);
+                     border-left: 3px solid var(--accent); border-radius: 6px;
+                     transition: border-color 0.15s, transform 0.15s; counter-increment: deck;
+                     text-decoration: none; }
+        .deck-card:hover { border-color: var(--accent); transform: translateX(3px); }
+        .deck-card .num { font-family: var(--font-mono); font-size: 0.8rem;
+                          color: var(--accent); min-width: 2rem; padding-top: 0.15rem; }
+        .deck-card .num::before { content: counter(deck, decimal-leading-zero); }
+        .deck-card .body { flex: 1; min-width: 0; }
+        .deck-card .deck-title { font-family: var(--font-display); font-size: 1.05rem;
+                                 font-weight: 600; color: var(--text-primary);
+                                 margin-bottom: 0.2rem; }
+        .deck-card:hover .deck-title { color: var(--accent); }
+        .deck-card .desc { font-size: 0.92rem; color: var(--text-secondary); }
+        .deck-card .meta { font-family: var(--font-mono); font-size: 0.7rem;
+                           color: var(--text-secondary); margin-top: 0.4rem;
+                           display: flex; gap: 0.6rem; flex-wrap: wrap; }
+        .badge { display: inline-block; font-family: var(--font-mono);
+                 font-size: 0.65rem; padding: 0.1rem 0.5rem; border-radius: 999px;
+                 border: 1px solid var(--border); color: var(--text-secondary); }
+        .badge.live { border-color: var(--accent); color: var(--accent);
+                      background: var(--accent-dim); }
+        .callout { background: var(--bg-card); border-left: 3px solid var(--accent);
+                   border-radius: 0 8px 8px 0; padding: 1rem 1.25rem; margin: 1.75rem 0; }
+        .callout p { margin-bottom: 0; color: var(--text-secondary); }
+        .callout p strong { color: var(--text-primary); }
+        .callout .callout-label { font-family: var(--font-mono); font-size: 0.75rem;
+                   color: var(--accent); text-transform: uppercase;
+                   letter-spacing: 0.1em; margin-bottom: 0.3rem; }
+        .footer { text-align: center; padding: 3rem 1.5rem;
+                  color: var(--text-secondary); font-size: 0.85rem;
+                  border-top: 1px solid var(--border); max-width: var(--max-width);
+                  margin: 3rem auto 0; }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 1.8rem; }
+            .deck-card { flex-direction: column; gap: 0.3rem; }
+            .pipeline-step { font-size: 0.58rem; padding: 0.2rem 0.4rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream &mdash; Presentation Series</div>
+    <h1>NVIDIA <span class="accent">DeepStream</span></h1>
+    <p class="subtitle">The streaming vision-AI SDK, presented for engineers. Eight deep-dive decks trace one continuous arc &mdash; from what DeepStream is and the GStreamer foundation it is built on, through the plugin toolbox, inference with TensorRT and Triton, multi-object tracking, the metadata graph and analytics, edge-to-cloud messaging, and finally building and deploying a production pipeline. Every deck answers the same three questions: <em>what problem it solves</em>, <em>how the mechanism works</em>, and <em>why it matters when you build and operate real video-AI systems</em> &mdash; with a hand-drawn diagram wherever a picture helps.</p>
+    <div class="tags"><span class="tag">GStreamer</span><span class="tag">TensorRT</span><span class="tag">Triton</span><span class="tag">Multi-Object Tracking</span><span class="tag">NvDsBatchMeta</span><span class="tag">Kafka / IoT</span><span class="tag">Jetson + dGPU</span><span class="tag">8 decks</span></div>
+    <div class="pipeline">
+        <span class="pipeline-step">Decode</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Batch</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Infer</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Track</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Analyse</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Overlay</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">Stream / Publish</span>
+    </div>
+</header>
+<main class="container">
+    <h2>Presentations in This Series</h2>
+    <p class="lead">The eight decks are ordered to build on one another &mdash; the big picture and the GStreamer/architecture foundation come first, then the plugin toolbox, then a deep dive into each subsystem, and finally how to build and ship it. Each deck also stands alone.</p>
+    <ol class="deck-list">
+        <a class="deck-card" href="part1.html"><div class="num"></div><div class="body"><div class="deck-title">The Big Picture &rarr;</div><div class="desc">What DeepStream is and why it exists: turning many live video streams into real-time structured insight, hardware-accelerated end-to-end on NVIDIA. The canonical pipeline, the software stack, where it runs (Jetson to dGPU), and the use cases it serves.</div><div class="meta"><span class="badge live">live</span><span>Overview &amp; motivation</span></div></div></a>
+        <a class="deck-card" href="part2.html"><div class="num"></div><div class="body"><div class="deck-title">GStreamer Foundations &amp; the DeepStream Architecture &rarr;</div><div class="desc">DeepStream is a set of accelerated GStreamer plugins. Elements, pads, caps negotiation and buffers; the NVDEC/NVENC/GPU/VIC/DLA hardware blocks; and the zero-copy NVMM / NvBufSurface memory model that keeps the whole pipeline on the GPU.</div><div class="meta"><span class="badge live">live</span><span>Framework &amp; memory model</span></div></div></a>
+        <a class="deck-card" href="part3.html"><div class="num"></div><div class="body"><div class="deck-title">The Plugin Toolbox &rarr;</div><div class="desc">A guided tour of the 40+ plugins grouped by role &mdash; input &amp; decode, batching &amp; routing (nvstreammux/nvstreamdemux), inference, analytics &amp; CV, compositing &amp; OSD, and output &amp; messaging &mdash; mapped onto the reference deepstream-app pipeline.</div><div class="meta"><span class="badge live">live</span><span>The plugin set</span></div></div></a>
+        <a class="deck-card" href="part4.html"><div class="num"></div><div class="body"><div class="deck-title">Inference &mdash; nvinfer, TensorRT &amp; Triton &rarr;</div><div class="desc">Primary vs secondary GIE; how nvinfer builds and caches TensorRT engines; the config-file anatomy; pre-processing, clustering and custom parsers; batching and interval; and when to reach for Triton via nvinferserver. Plus TAO pretrained models.</div><div class="meta"><span class="badge live">live</span><span>Running the models</span></div></div></a>
+        <a class="deck-card" href="part5.html"><div class="num"></div><div class="body"><div class="deck-title">Multi-Object Tracking &rarr;</div><div class="desc">Persistent object identity across frames with nvtracker and the composable NvMultiObjectTracker library &mdash; IOU, NvSORT, NvDCF and NvDeepSORT; Re-ID galleries and re-association; the YAML config; and single-view 3D tracking.</div><div class="meta"><span class="badge live">live</span><span>Identity over time</span></div></div></a>
+        <a class="deck-card" href="part6.html"><div class="num"></div><div class="body"><div class="deck-title">Metadata &amp; Analytics &rarr;</div><div class="desc">The NvDsBatchMeta &rarr; frame &rarr; object &rarr; classifier hierarchy that carries meaning alongside the pixels; metadata pools and lifecycle; reading it in buffer probes (C and pyds); extending it with user meta; and the nvdsanalytics rule engine (ROI, line-crossing, overcrowding).</div><div class="meta"><span class="badge live">live</span><span>The data model</span></div></div></a>
+        <a class="deck-card" href="part7.html"><div class="num"></div><div class="body"><div class="deck-title">Messaging, Smart Record &amp; IoT &rarr;</div><div class="desc">The last mile: nvmsgconv serialises event metadata to JSON/protobuf, nvmsgbroker ships it to Kafka / MQTT / AMQP / Azure IoT / Redis; smart-record captures event clips; bidirectional cloud-to-edge control; and the REST API for dynamic streams.</div><div class="meta"><span class="badge live">live</span><span>Edge to cloud</span></div></div></a>
+        <a class="deck-card" href="part8.html"><div class="num"></div><div class="body"><div class="deck-title">Building &amp; Deploying &rarr;</div><div class="desc">Four ways to build &mdash; config-driven deepstream-app, C/C++, Python (pyds), and Graph Composer / Service Maker; packaging with NGC containers, JetPack and Kubernetes; and performance tuning for maximum streams-per-GPU with the debugging tools to get there.</div><div class="meta"><span class="badge live">live</span><span>Config to production</span></div></div></a>
+    </ol>
+    <div class="callout">
+        <div class="callout-label">How to read this series</div>
+        <p>Start at Part 01 for the big picture, then Part 02 for the GStreamer and memory foundation that everything else assumes. Parts 03&ndash;07 each take one subsystem &mdash; the plugin set, inference, tracking, the metadata graph, and messaging &mdash; and go deep. Part 08 pulls it together into how you actually build, containerise and tune a production pipeline. If you already know GStreamer, you can jump straight to the subsystem you need.</p>
+    </div>
+</main>
+<footer class="footer">
+    <p>Part of the <a href="https://github.com/BrendanJamesLynskey/LLMs">LLMs hub</a> &mdash; an index of presentation series for AI / LLM / vision-AI engineers. Source material: the <a href="https://docs.nvidia.com/metropolis/deepstream/dev-guide/">NVIDIA DeepStream documentation</a>.</p>
+    <p style="margin-top:0.5rem;font-size:0.8rem;"><a href="https://github.com/BrendanJamesLynskey/Nvidia_DeepStream">View this repository on GitHub</a></p>
+</footer>
+</body>
+</html>

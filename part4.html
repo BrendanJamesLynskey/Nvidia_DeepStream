@@ -1,0 +1,757 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 04 &mdash; Inference: nvinfer, TensorRT &amp; Triton</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+<div class="series-label">NVIDIA DeepStream &middot; Part 04</div>
+<h1>From Model to <span class="accent">Metadata</span></h1>
+<p class="subtitle">Gst-nvinfer and Gst-nvinferserver run your neural networks on the batched video and attach detections, classifications and segmentations as metadata &mdash; almost entirely through a text config file, no inference code required.</p>
+<div class="tags">
+<span class="tag">PGIE/SGIE</span>
+<span class="tag">TensorRT Engine</span>
+<span class="tag">ONNX</span>
+<span class="tag">INT8/FP16</span>
+<span class="tag">DLA</span>
+<span class="tag">Triton</span>
+<span class="tag">Custom Parsers</span>
+</div>
+</header>
+
+<section class="slide" id="slide-00">
+<div class="slide-number">00</div>
+<h2>Contents</h2>
+<ul class="contents-list">
+<li><a href="#slide-01">The GPU Inference Engine (GIE)</a></li>
+<li><a href="#slide-02">Primary vs Secondary GIE</a></li>
+<li><a href="#slide-03">TensorRT under the hood</a></li>
+<li><a href="#slide-04">The config file anatomy</a></li>
+<li><a href="#slide-05">Pre-processing &amp; output parsing</a></li>
+<li><a href="#slide-06">Batching, interval &amp; throughput</a></li>
+<li><a href="#slide-07">Triton via Gst-nvinferserver</a></li>
+<li><a href="#slide-08">Custom models &amp; TAO</a></li>
+<li><a href="#slide-09">Takeaways</a></li>
+</ul>
+</section>
+
+<section class="slide" id="slide-01">
+<div class="slide-number">01</div>
+<h2>The GPU Inference Engine (GIE)</h2>
+<p><strong>Gst-nvinfer</strong> is the element that actually runs a neural network inside a DeepStream pipeline. It sits downstream of <code>nvstreammux</code>, takes the batched <strong>NvBufSurface</strong> the muxer produced, transforms it into whatever tensor shape and format the network expects, hands it to <strong>TensorRT</strong> for execution, and writes the results straight back onto the buffer as structured metadata &mdash; bounding boxes as <code>NvDsObjectMeta</code>, classifier outputs as <code>NvDsClassifierMeta</code>, and per-pixel masks as segmentation metadata hanging off the frame.</p>
+<p>Crucially, none of this normally requires writing inference code. A <strong>Gst-nvinfer</strong> instance is configured entirely through a plain-text <code>.txt</code> config file &mdash; model path, precision, batch size, thresholds, class labels &mdash; and dropped into the pipeline as a GStreamer element like any other. The only code most projects write is a small output parser for a non-standard network head.</p>
+<div class="callout">
+<div class="callout-label">Key idea</div>
+<p>nvinfer is a bridge, not a black box: it owns everything between "batched video frames" and "TensorRT engine call", and everything between "raw tensor output" and "queryable metadata" &mdash; buffer transform, batching, engine execution, and result attachment, all config-driven.</p>
+</div>
+</section>
+
+<section class="slide" id="slide-02">
+<div class="slide-number">02</div>
+<h2>Primary vs Secondary GIE</h2>
+<p>A single nvinfer element can run in one of two roles, distinguished by <code>process-mode</code>. A <strong>PGIE</strong> (Primary GIE, <code>process-mode=1</code>) runs on the full frame, typically as an object detector. An <strong>SGIE</strong> (Secondary GIE, <code>process-mode=2</code>) runs on the objects an upstream GIE already found &mdash; cropping and batching each detected object's region for a second, narrower network, such as a make/colour classifier applied to every car a PGIE detected.</p>
+<div class="canvas-wrap">
+<svg viewBox="0 0 720 240" width="720" height="240" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="p4s2-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/></marker>
+</defs>
+<style>
+.p4s2-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+.p4s2-box-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
+.p4s2-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+.p4s2-label-accent{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+.p4s2-sub{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.p4s2-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+.p4s2-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p4s2-arrow);}
+</style>
+<text x="10" y="20" class="p4s2-title">cascaded inference: PGIE &rarr; SGIE</text>
+
+<rect x="10" y="95" width="100" height="50" rx="6" class="p4s2-box"/>
+<text x="60" y="118" class="p4s2-label">Video Frame</text>
+<text x="60" y="133" class="p4s2-sub">full NvBufSurface</text>
+
+<line x1="110" y1="120" x2="136" y2="120" class="p4s2-arrow"/>
+
+<rect x="138" y="95" width="120" height="50" rx="6" class="p4s2-box-accent"/>
+<text x="198" y="118" class="p4s2-label-accent">PGIE</text>
+<text x="198" y="133" class="p4s2-sub">process-mode=1 &middot; detector</text>
+
+<line x1="258" y1="120" x2="284" y2="120" class="p4s2-arrow"/>
+
+<rect x="286" y="95" width="120" height="50" rx="6" class="p4s2-box"/>
+<text x="346" y="118" class="p4s2-label">Detected Objects</text>
+<text x="346" y="133" class="p4s2-sub">NvDsObjectMeta &times;N</text>
+
+<line x1="406" y1="120" x2="432" y2="120" class="p4s2-arrow"/>
+
+<rect x="434" y="95" width="120" height="50" rx="6" class="p4s2-box-accent"/>
+<text x="494" y="118" class="p4s2-label-accent">SGIE</text>
+<text x="494" y="133" class="p4s2-sub">process-mode=2 &middot; classifier</text>
+
+<line x1="554" y1="120" x2="580" y2="120" class="p4s2-arrow"/>
+
+<rect x="582" y="95" width="128" height="50" rx="6" class="p4s2-box"/>
+<text x="646" y="118" class="p4s2-label">Attributes</text>
+<text x="646" y="133" class="p4s2-sub">NvDsClassifierMeta</text>
+
+<text x="346" y="175" class="p4s2-sub">gated by operate-on-gie-id + operate-on-class-ids &middot; SGIE batches cropped object regions</text>
+</svg>
+</div>
+<p>Which objects a given SGIE consumes is controlled by <code>operate-on-gie-id</code> (only look at objects produced by a specific upstream GIE, matched via <code>gie-unique-id</code>) and <code>operate-on-class-ids</code> (only look at specific detected classes, e.g. class 0 = "car"). Multiple SGIEs can chain off the same PGIE output &mdash; a colour classifier and a make/model classifier both reading the same set of car detections &mdash; and SGIEs internally batch the cropped object images together for one efficient TensorRT call, rather than one inference per object.</p>
+</section>
+
+<section class="slide" id="slide-03">
+<div class="slide-number">03</div>
+<h2>TensorRT under the hood</h2>
+<p>Every nvinfer instance is ultimately a wrapper around a <strong>TensorRT</strong> execution context. On first run, nvinfer takes the source model &mdash; typically an <code>onnx-file</code>, though UFF and Caffe are still supported on older paths &mdash; and has TensorRT build a serialized, hardware- and precision-specific <strong>.engine</strong> file: fusing layers, selecting the fastest kernel implementation for the target GPU, and laying out weights for the chosen precision. That build step can take minutes; the result is cached at <code>model-engine-file</code> so every subsequent launch loads the pre-built engine directly instead of rebuilding.</p>
+<h3>Precision modes</h3>
+<p>Set via <code>network-mode</code>: <strong>FP32</strong> (0) is the accuracy baseline; <strong>FP16</strong> (2) roughly halves memory and often close to doubles throughput on tensor cores with negligible accuracy loss; <strong>INT8</strong> (1) goes further again but needs a calibration pass over representative data, supplied as <code>int8-calib-file</code>, to map float ranges onto the 8-bit dynamic range without wrecking accuracy.</p>
+<h3>DLA offload</h3>
+<p>On Jetson platforms with a <strong>Deep Learning Accelerator</strong>, `enable-dla=1` plus `use-dla-core` can move a supported network onto the DLA silicon entirely, freeing the GPU's CUDA cores for other GIEs or for the tracker/OSD stages running concurrently &mdash; a way to parallelise inference across dissimilar compute engines on the same chip rather than fighting for the same one.</p>
+<div class="callout">
+<div class="callout-label">Watch for</div>
+<p>A cached <code>.engine</code> is tied to the exact GPU architecture, TensorRT version, precision and batch size it was built with. Change any of those &mdash; a driver/TensorRT upgrade, a different GPU SKU, a new batch size &mdash; and nvinfer detects the mismatch and silently rebuilds, which is why the first run after a deployment change is always slower.</p>
+</div>
+</section>
+
+<section class="slide" id="slide-04">
+<div class="slide-number">04</div>
+<h2>The config file anatomy</h2>
+<p>A realistic primary-detector config, of the kind referenced from a pipeline's <code>nvinfer</code> element or a <code>deepstream-app</code> group:</p>
+<div class="code-block">
+<div class="code-header">config_infer_primary.txt</div>
+<pre><code><span class="kw">[property]</span>
+<span class="cm"># hardware &amp; model</span>
+gpu-id=<span class="num">0</span>
+net-scale-factor=<span class="num">0.0039215697</span>
+offsets=<span class="num">0</span>;<span class="num">0</span>;<span class="num">0</span>
+onnx-file=<span class="str">../../models/resnet18_detector.onnx</span>
+model-engine-file=<span class="str">../../models/resnet18_detector.onnx_b4_gpu0_fp16.engine</span>
+labelfile-path=<span class="str">labels.txt</span>
+
+<span class="cm"># batching &amp; precision</span>
+batch-size=<span class="num">4</span>
+network-mode=<span class="num">2</span>
+num-detected-classes=<span class="num">4</span>
+interval=<span class="num">0</span>
+
+<span class="cm"># identity &amp; role</span>
+gie-unique-id=<span class="num">1</span>
+process-mode=<span class="num">1</span>
+network-type=<span class="num">0</span>
+
+<span class="cm"># post-processing</span>
+cluster-mode=<span class="num">2</span>
+model-color-format=<span class="num">0</span>
+network-input-order=<span class="num">0</span>
+maintain-aspect-ratio=<span class="num">1</span>
+
+<span class="kw">[class-attrs-all]</span>
+pre-cluster-threshold=<span class="num">0.2</span>
+nms-iou-threshold=<span class="num">0.5</span>
+topk=<span class="num">20</span></code></pre>
+</div>
+<div class="table-wrap">
+<table>
+<tr><th>Key</th><th>What it controls</th></tr>
+<tr><td><code>gpu-id</code></td><td>Which physical GPU this GIE instance executes on, on multi-GPU hosts.</td></tr>
+<tr><td><code>net-scale-factor</code> / <code>offsets</code></td><td>Per-channel scale and mean subtraction applied while converting the input buffer into the network's tensor.</td></tr>
+<tr><td><code>onnx-file</code></td><td>Source model; TensorRT builds a serialized engine from it the first time it's needed.</td></tr>
+<tr><td><code>model-engine-file</code></td><td>Cached <code>.engine</code> path &mdash; skips the (slow) build step on every subsequent launch.</td></tr>
+<tr><td><code>labelfile-path</code></td><td>Class-index &rarr; name mapping, used to populate object/classifier metadata.</td></tr>
+<tr><td><code>batch-size</code></td><td>Frames (PGIE) or cropped objects (SGIE) inferred per TensorRT call.</td></tr>
+<tr><td><code>network-mode</code></td><td>Precision: <code>0</code> FP32, <code>1</code> INT8, <code>2</code> FP16.</td></tr>
+<tr><td><code>num-detected-classes</code></td><td>Number of output classes the network head produces.</td></tr>
+<tr><td><code>interval</code></td><td>Frames skipped between inference calls; the tracker interpolates the gap.</td></tr>
+<tr><td><code>gie-unique-id</code></td><td>ID this GIE stamps on its metadata, referenced by downstream SGIEs via <code>operate-on-gie-id</code>.</td></tr>
+<tr><td><code>process-mode</code></td><td><code>1</code> primary (full frame), <code>2</code> secondary (crop from upstream objects).</td></tr>
+<tr><td><code>network-type</code></td><td><code>0</code> detector, <code>1</code> classifier, <code>2</code> segmentation, <code>100</code> other/custom.</td></tr>
+<tr><td><code>cluster-mode</code></td><td>Bounding-box post-processing algorithm &mdash; see next slide.</td></tr>
+</table>
+</div>
+</section>
+
+<section class="slide" id="slide-05">
+<div class="slide-number">05</div>
+<h2>Pre-processing &amp; output parsing</h2>
+<p>nvinfer handles both ends of the inference call: turning a raw video buffer into the tensor the network expects, and turning the raw tensor output back into usable metadata.</p>
+<h3>Input normalisation</h3>
+<p><code>net-scale-factor</code> and <code>offsets</code> implement <code>(pixel &minus; offset) &times; scale</code> per channel &mdash; the standard mean-subtraction/rescale most vision networks train with. <code>model-color-format</code> selects RGB/BGR/greyscale, <code>network-input-order</code> selects NCHW vs NHWC tensor layout, and <code>infer-dims</code> fixes the network's expected input resolution; nvinfer resizes and colour-converts on the GPU via the same VIC/CUDA path used elsewhere in the pipeline, so no host round-trip is needed.</p>
+<h3>Bounding-box clustering</h3>
+<p>A detector head typically emits far more raw candidate boxes than real objects; <code>cluster-mode</code> picks the algorithm that collapses them:</p>
+<div class="table-wrap">
+<table>
+<tr><th>Value</th><th>Mode</th><th>Notes</th></tr>
+<tr><td><code>0</code></td><td>Group Rectangles</td><td>OpenCV-style overlap grouping; simple, legacy default.</td></tr>
+<tr><td><code>1</code></td><td>DBSCAN</td><td>Density-based clustering; copes well with irregular overlaps.</td></tr>
+<tr><td><code>2</code></td><td>NMS</td><td>Standard IoU non-max suppression &mdash; the common modern default.</td></tr>
+<tr><td><code>3</code></td><td>None</td><td>Raw boxes passed through unclustered, for a fully custom downstream parser.</td></tr>
+<tr><td><code>4</code></td><td>DBSCAN + NMS Hybrid</td><td>DBSCAN groups, NMS trims within groups; highest quality, most compute.</td></tr>
+</table>
+</div>
+<h3>Custom output parsing</h3>
+<p>Non-standard heads &mdash; anchor-free detectors, unusual segmentation formats, exotic classifier outputs &mdash; are handled by supplying <code>parse-bbox-func-name</code> and <code>custom-lib-path</code>, pointing at a shared library implementing the <code>NvDsInferParseCustomFunc</code> signature. For inputs that need bespoke, ROI-based or multi-tensor preparation before a network even sees them &mdash; e.g. feeding several regions of one frame as separate batch entries &mdash; <strong>Gst-nvdspreprocess</strong> sits upstream of nvinfer and writes a ready-made <code>input-tensor-meta</code> that nvinfer consumes directly, bypassing its own default pre-processing.</p>
+</section>
+
+<section class="slide" id="slide-06">
+<div class="slide-number">06</div>
+<h2>Batching, interval &amp; throughput</h2>
+<p>Two knobs dominate inference throughput tuning. <code>batch-size</code> should generally match the <code>nvstreammux</code> batch size (the number of streams feeding the PGIE) &mdash; a mismatch leaves either GPU cycles or streams unfed, since one TensorRT call processes the whole batch together. For an SGIE, batch size instead bounds how many cropped objects are inferred per call, which can spike well above the stream count on busy frames.</p>
+<p><code>interval=N</code> skips inference on N frames after each one that's run, letting the tracker (Part 05) carry detected boxes forward by prediction rather than re-running the network on every frame &mdash; a direct accuracy-for-throughput trade that's one of the highest-leverage settings in a production pipeline.</p>
+<div class="table-wrap">
+<table>
+<tr><th>interval</th><th>Inference cadence</th><th>Effect</th></tr>
+<tr><td><code>0</code></td><td>Every frame</td><td>Maximum detection accuracy and freshness; maximum GPU cost.</td></tr>
+<tr><td><code>1</code></td><td>Every 2nd frame</td><td>Tracker predicts the skipped frame; roughly 2&times; inference throughput.</td></tr>
+<tr><td><code>4</code></td><td>Every 5th frame</td><td>Good for slow-moving scenes; tracker bridges longer gaps between detections.</td></tr>
+</table>
+</div>
+<p>The other lever is placement: on Jetson, splitting GIEs across GPU and DLA (Slide 03) lets independent networks run concurrently rather than serialising on one engine, which matters more than raw batch size once a pipeline runs several PGIE/SGIE stages per stream.</p>
+</section>
+
+<section class="slide" id="slide-07">
+<div class="slide-number">07</div>
+<h2>Triton via Gst-nvinferserver</h2>
+<p><strong>Gst-nvinferserver</strong> is the drop-in alternative to Gst-nvinfer: same role in the pipeline, same metadata contract, but inference is delegated to the <strong>Triton Inference Server</strong> instead of a directly-loaded TensorRT engine. Reach for it when you need model frameworks TensorRT doesn't natively run (TensorFlow, PyTorch/LibTorch, ONNX Runtime), model <strong>ensembles</strong> (chained or parallel models served as one logical request), or dynamic batching and hot-swappable versions out of a Triton <strong>model repository</strong>.</p>
+<div class="canvas-wrap">
+<svg viewBox="0 0 720 280" width="720" height="280" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="p4s7-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/></marker>
+</defs>
+<style>
+.p4s7-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+.p4s7-box-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
+.p4s7-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+.p4s7-label-accent{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+.p4s7-sub{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.p4s7-cap{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.p4s7-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+.p4s7-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p4s7-arrow);}
+.p4s7-dash{stroke:#76B900;stroke-width:1.5;fill:none;stroke-dasharray:4,3;marker-end:url(#p4s7-arrow);}
+</style>
+<text x="10" y="20" class="p4s7-title">nvinferserver deployment topologies</text>
+
+<text x="95" y="42" class="p4s7-cap">CAPI &middot; in-process, lowest latency</text>
+<rect x="20" y="50" width="150" height="50" rx="6" class="p4s7-box"/>
+<text x="95" y="72" class="p4s7-label">DeepStream App</text>
+<text x="95" y="87" class="p4s7-sub">Gst-nvinferserver</text>
+
+<line x1="170" y1="75" x2="206" y2="75" class="p4s7-arrow"/>
+
+<rect x="210" y="50" width="160" height="50" rx="6" class="p4s7-box-accent"/>
+<text x="290" y="72" class="p4s7-label-accent">Triton (embedded)</text>
+<text x="290" y="87" class="p4s7-sub">same process &amp; GPU</text>
+
+<text x="105" y="182" class="p4s7-cap">gRPC &middot; network hop, scale-out</text>
+<rect x="20" y="190" width="150" height="50" rx="6" class="p4s7-box"/>
+<text x="95" y="212" class="p4s7-label">DeepStream App</text>
+<text x="95" y="227" class="p4s7-sub">Gst-nvinferserver</text>
+
+<line x1="170" y1="215" x2="206" y2="215" class="p4s7-dash"/>
+
+<rect x="210" y="190" width="180" height="50" rx="6" class="p4s7-box-accent"/>
+<text x="300" y="212" class="p4s7-label-accent">Standalone Triton Server</text>
+<text x="300" y="227" class="p4s7-sub">remote / local &middot; scaled out</text>
+
+<rect x="470" y="110" width="230" height="60" rx="6" class="p4s7-box-accent"/>
+<text x="585" y="134" class="p4s7-label-accent">Shared Model Repository</text>
+<text x="585" y="150" class="p4s7-sub">versioned models &middot; ensembles</text>
+<text x="585" y="162" class="p4s7-sub">dynamic batching</text>
+
+<line x1="370" y1="75" x2="466" y2="128" class="p4s7-arrow"/>
+<line x1="390" y1="215" x2="466" y2="152" class="p4s7-arrow"/>
+<text x="585" y="192" class="p4s7-cap">same model files served either way</text>
+</svg>
+</div>
+<div class="diagram-grid cols-2">
+<div class="diagram-panel accent-border"><h4>CAPI mode</h4>
+<p>Triton runs in-process inside the DeepStream application via its C API &mdash; no network hop, latency close to native nvinfer, but the server shares the pipeline's process and GPU.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>gRPC mode</h4>
+<p>A standalone Triton server (local or remote) is called over gRPC &mdash; decouples and can scale inference independently of the DeepStream pipeline, at the cost of a network round-trip per request.</p>
+</div>
+</div>
+<p>Configuration is a protobuf text file (<code>config.pbtxt</code>-style) rather than nvinfer's flat key=value format, referencing the Triton model repository and specifying which backend, input/output tensor bindings and batching behaviour to use.</p>
+<div class="table-wrap">
+<table>
+<tr><th>Aspect</th><th>Gst-nvinfer</th><th>Gst-nvinferserver (Triton)</th></tr>
+<tr><td>Backend</td><td>TensorRT only</td><td>TensorRT, ONNX Runtime, TensorFlow, PyTorch, OpenVINO &mdash; via Triton backends</td></tr>
+<tr><td>Latency</td><td>Lowest &mdash; direct in-process engine call</td><td>CAPI close to native; gRPC adds a network round-trip</td></tr>
+<tr><td>Deployment unit</td><td>One engine file baked per GIE</td><td>Versioned model repository; hot-reloadable, ensembles, dynamic batching</td></tr>
+<tr><td>Config format</td><td>Flat <code>key=value</code> .txt</td><td>Protobuf config referencing the Triton repository</td></tr>
+<tr><td>When to choose</td><td>TensorRT-only pipelines, tightest latency budget, edge/Jetson</td><td>Multi-framework model zoo, ensembles, independently-scaled inference (gRPC), rapid model versioning</td></tr>
+</table>
+</div>
+</section>
+
+<section class="slide" id="slide-08">
+<div class="slide-number">08</div>
+<h2>Custom models &amp; TAO</h2>
+<p>Most production pipelines don't start from a model trained from scratch. NVIDIA's <strong>TAO Toolkit</strong> ships a catalogue of pretrained, DeepStream-ready models purpose-built for common perception tasks: <strong>PeopleNet</strong> (person/face/bag detection), <strong>TrafficCamNet</strong> and <strong>DashCamNet</strong> (vehicle detection from fixed and moving cameras), <strong>LPD/LPR</strong> (license-plate detection and recognition), and <strong>PoseClassificationNet</strong> (action/pose classification on top of body keypoints) &mdash; all designed to slot straight into an nvinfer PGIE/SGIE config with published label files and calibration data.</p>
+<h3>The TAO workflow</h3>
+<p>Train (or fine-tune a pretrained checkpoint on site-specific data) &rarr; <strong>prune</strong> the network to cut redundant channels &rarr; <strong>quantise</strong> for INT8 &rarr; export to ONNX (or the legacy encrypted <code>.etlt</code> format, or a pre-built engine) &rarr; drop the exported artefact into an nvinfer config's <code>onnx-file</code>/<code>model-engine-file</code> and a matching <code>labelfile-path</code>. No pipeline code changes; the model swap is entirely a config-file edit.</p>
+<div class="callout">
+<div class="callout-label">In practice</div>
+<p>For edge deployment at INT8, TAO's exported <strong>calibration cache</strong> travels with the model artefact, so nvinfer can build an INT8 engine on the target Jetson without needing the original training data on-device &mdash; important when the calibration set itself is sensitive or simply too large to ship to every edge box.</p>
+</div>
+</section>
+
+<section class="slide" id="slide-09">
+<div class="slide-number">09</div>
+<h2>Takeaways</h2>
+<ul>
+<li>Gst-nvinfer is <strong>config-driven</strong>: model path, precision, batching and thresholds live in a text file, not application code.</li>
+<li><strong>PGIE</strong> (<code>process-mode=1</code>) detects on full frames; <strong>SGIE</strong> (<code>process-mode=2</code>) classifies or refines the objects a PGIE already found, gated by <code>operate-on-gie-id</code>/<code>operate-on-class-ids</code>.</li>
+<li>TensorRT builds and caches a hardware- and precision-specific <strong>.engine</strong> from ONNX; it silently rebuilds whenever GPU, TensorRT version, precision or batch size change.</li>
+<li><strong>FP16/INT8</strong> trade accuracy for throughput and memory; <strong>DLA</strong> offload parallelises inference across silicon on Jetson.</li>
+<li>Bounding-box <strong>clustering mode</strong> and <strong>custom parser functions</strong> bridge nvinfer to non-standard detector/segmentation heads.</li>
+<li><code>interval</code> is the single highest-leverage throughput knob &mdash; skip inference frames and let the tracker interpolate.</li>
+<li>Reach for <strong>Gst-nvinferserver / Triton</strong> when you need multiple frameworks, model ensembles, or an independently-scaled inference tier.</li>
+<li><strong>TAO Toolkit</strong> pretrained models give a fast, production-grade starting point without training from scratch.</li>
+</ul>
+</section>
+
+<nav class="deck-nav"><a href="part3.html">&larr; Part 03 · The Plugin Toolbox</a><a href="index.html">Index</a><a class="next" href="part5.html">Part 05 · Multi-Object Tracking &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

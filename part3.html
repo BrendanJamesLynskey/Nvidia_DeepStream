@@ -1,0 +1,773 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 03 &mdash; The Plugin Toolbox</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream · Part 03</div>
+    <h1>Forty <span class="accent">Plugins</span>, One Pipeline</h1>
+    <p class="subtitle">DeepStream isn't a monolith — it's a toolbox of composable, hardware-accelerated GStreamer plugins. This deck names them, groups them by role, and shows where each one sits in a real pipeline.</p>
+    <div class="tags">
+        <span class="tag">nvstreammux</span>
+        <span class="tag">nvinfer</span>
+        <span class="tag">nvtracker</span>
+        <span class="tag">nvdsosd</span>
+        <span class="tag">nvvideoconvert</span>
+        <span class="tag">nvmultistreamtiler</span>
+        <span class="tag">nvmsgbroker</span>
+    </div>
+    <div class="pipeline">
+        <div class="pipeline-step">src</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">decode</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">mux</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">infer</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">track</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">analytics</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">osd</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">sink</div>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Contents</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">The toolbox at a glance</a></li>
+        <li><a href="#slide-02">Input &amp; decode</a></li>
+        <li><a href="#slide-03">Batching &amp; routing</a></li>
+        <li><a href="#slide-04">Inference family</a></li>
+        <li><a href="#slide-05">Analytics &amp; computer vision</a></li>
+        <li><a href="#slide-06">Compositing &amp; on-screen display</a></li>
+        <li><a href="#slide-07">Output &amp; messaging</a></li>
+        <li><a href="#slide-08">The reference pipeline, mapped</a></li>
+        <li><a href="#slide-09">Reading a plugin</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>The toolbox at a glance</h2>
+    <p>DeepStream ships <strong>40+ Gst plugins</strong> (7.x&ndash;9.x) that plug into the standard GStreamer element model &mdash; each one a `.so` registered with `gst-inspect-1.0`. You compose the ones you need; <code>deepstream-app</code>'s reference config wires a standard set for you, but nothing stops you building a leaner or stranger graph by hand.</p>
+    <div class="diagram-grid cols-3">
+        <div class="diagram-panel accent-border">
+            <h4>Input / Decode</h4>
+            <p>nvv4l2decoder, nvurisrcbin, nvmultiurisrcbin, nvjpegdec</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Batching / Routing</h4>
+            <p>nvstreammux, nvstreamdemux</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Inference</h4>
+            <p>nvinfer, nvinferserver, nvdspreprocess, nvdspostprocess</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Analytics / CV</h4>
+            <p>nvtracker, nvdsanalytics, nvof, nvofvisual, nvdewarper, nvsegvisual</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Compositing / OSD</h4>
+            <p>nvvideoconvert, nvmultistreamtiler, nvdsosd, nvdsvideotemplate</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Output / Messaging</h4>
+            <p>nvv4l2h264enc/h265enc, nvrtspoutsinkbin, nvmsgconv, nvmsgbroker</p>
+        </div>
+    </div>
+    <p>Every group below is a stop on the tour. The inference and analytics families get their own dedicated deeper dives later in the series (Parts 04 and 05) &mdash; here they're introduced by name and role only.</p>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Input &amp; decode</h2>
+    <p>Getting compressed video off the wire or disk and onto the GPU as raw NVMM-batched frames, without a CPU round-trip.</p>
+    <ul>
+        <li><strong>Gst-nvv4l2decoder</strong> &mdash; hardware decode on NVDEC. Handles H.264, H.265, VP9, MJPEG and more depending on platform; outputs directly into GPU memory (<code>video/x-raw(memory:NVMM)</code>) so nothing touches host RAM.</li>
+        <li><strong>Gst-nvurisrcbin</strong> &mdash; a managed single-source bin wrapping <code>uridecodebin</code>-style source-plus-decode logic with DeepStream extras: automatic RTSP reconnection on drop, file-source looping, and smart-record (buffered pre/post-event clip capture) built in.</li>
+        <li><strong>Gst-nvmultiurisrcbin</strong> &mdash; the multi-source evolution: manages N URI sources behind one bin, supports adding and removing sources at runtime (no pipeline rebuild), and exposes a REST control interface for live source management &mdash; the backbone of dynamic, fleet-scale deployments.</li>
+        <li><strong>Gst-nvjpegdec</strong> &mdash; hardware-accelerated JPEG/image decode, for still-image and MJPEG-heavy sources.</li>
+    </ul>
+    <p><code>uridecodebin</code> itself (stock GStreamer) still works for quick prototyping &mdash; it auto-negotiates a decode chain from a URI &mdash; but it doesn't know about NVMM memory or DeepStream's reconnection/record features, so production pipelines almost always reach for <code>nvurisrcbin</code>/<code>nvmultiurisrcbin</code> instead.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Batching &amp; routing</h2>
+    <p>Inference is only GPU-efficient in batches. DeepStream's mux/demux pair is what turns N independent streams into one batched buffer and back again.</p>
+    <h3>Gst-nvstreammux</h3>
+    <p>Takes N per-stream buffer pads as input, forms a single batched buffer of configurable size, and attaches <strong>NvDsBatchMeta</strong> &mdash; the metadata root that every downstream plugin (nvinfer, nvtracker, nvdsanalytics, nvdsosd&hellip;) reads and writes. This is the plugin that makes shared-batch GPU inference possible at all.</p>
+    <p>The <strong>new nvstreammux</strong> (the config-driven low-level library introduced from DeepStream 6.2 onward) decouples batch size from source count: batches can be smaller or larger than the number of live sources, sources can join and leave without a fixed batch reshape, and per-source frame-rate/latency behaviour is configurable independently. It's the better fit for dynamic pipelines built on <code>nvmultiurisrcbin</code>.</p>
+    <h3>Gst-nvstreamdemux</h3>
+    <p>The inverse operation: splits a batched buffer back into N separate per-stream buffers, so downstream elements can go back to per-stream processing (e.g. per-stream encode-and-save after a shared inference stage).</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p3a-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+                .p3a-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;}
+                .p3a-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p3a-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p3a-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:10px;text-anchor:middle;}
+                .p3a-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;text-anchor:middle;}
+                .p3a-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p3a-arrowhead);}
+            </style>
+            <defs>
+                <marker id="p3a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+            <rect class="p3a-box" x="10" y="15" width="90" height="30" rx="6"/>
+            <text class="p3a-label" x="55" y="34">src 0</text>
+            <rect class="p3a-box" x="10" y="60" width="90" height="30" rx="6"/>
+            <text class="p3a-label" x="55" y="79">src 1</text>
+            <rect class="p3a-box" x="10" y="105" width="90" height="30" rx="6"/>
+            <text class="p3a-label" x="55" y="124">src N</text>
+            <text class="p3a-caption" x="55" y="150">decoded NVMM</text>
+
+            <path class="p3a-arrow" d="M100,30 L195,55"/>
+            <path class="p3a-arrow" d="M100,75 L195,68"/>
+            <path class="p3a-arrow" d="M100,120 L195,80"/>
+
+            <rect class="p3a-accent" x="200" y="45" width="120" height="40" rx="6"/>
+            <text class="p3a-accentlabel" x="260" y="69">nvstreammux</text>
+
+            <rect class="p3a-box" x="360" y="45" width="110" height="40" rx="6"/>
+            <text class="p3a-label" x="415" y="63">batch</text>
+            <text class="p3a-caption" x="415" y="78">NvDsBatchMeta</text>
+
+            <path class="p3a-arrow" d="M320,65 L360,65"/>
+            <path class="p3a-arrow" d="M470,65 L510,65"/>
+
+            <text class="p3a-caption" x="490" y="45">infer / track / analytics&hellip;</text>
+
+            <rect class="p3a-accent" x="510" y="45" width="130" height="40" rx="6"/>
+            <text class="p3a-accentlabel" x="575" y="69">nvstreamdemux</text>
+
+            <path class="p3a-arrow" d="M640,55 L680,30"/>
+            <path class="p3a-arrow" d="M640,65 L680,68"/>
+            <path class="p3a-arrow" d="M640,75 L680,120"/>
+
+            <rect class="p3a-box" x="680" y="15" width="30" height="30" rx="6"/>
+            <text class="p3a-caption" x="695" y="60">sink 0</text>
+            <rect class="p3a-box" x="680" y="60" width="30" height="30" rx="6"/>
+            <text class="p3a-caption" x="695" y="105">sink 1</text>
+            <rect class="p3a-box" x="680" y="105" width="30" height="30" rx="6"/>
+            <text class="p3a-caption" x="695" y="150">sink N</text>
+
+            <text class="p3a-title" x="360" y="200">N sources &rarr; mux (batch) &rarr; shared processing &rarr; demux &rarr; N sinks</text>
+        </svg>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Inference family</h2>
+    <p>Four plugins cover the shape of a modern inference stage: engine execution, remote serving, custom pre-processing and detached post-processing.</p>
+    <ul>
+        <li><strong>Gst-nvinfer</strong> &mdash; runs a TensorRT engine in-process on the GPU; the default, lowest-latency path for detection and classification.</li>
+        <li><strong>Gst-nvinferserver</strong> &mdash; routes inference through Triton Inference Server, in-process or over the network, enabling multi-framework models (PyTorch, ONNX, TensorFlow) and model-ensemble/versioning features Triton provides.</li>
+        <li><strong>Gst-nvdspreprocess</strong> &mdash; builds custom or grouped-ROI input tensors ahead of inference, for models needing non-default scaling, per-ROI crops, or tensors assembled from multiple regions rather than the whole frame.</li>
+        <li><strong>Gst-nvdspostprocess</strong> &mdash; parses raw inference output tensors into DeepStream metadata as a detached stage, useful when output parsing needs to live outside nvinfer's own parser hooks.</li>
+    </ul>
+    <div class="callout">
+        <div class="callout-label">In practice</div>
+        <p>This slide is deliberately brief &mdash; engine building, INT8/FP16 calibration, primary/secondary GIE chains and the nvinfer/nvinferserver trade-off get a full deep dive in Part 04 &mdash; Inference &amp; TensorRT/Triton.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Analytics &amp; computer vision</h2>
+    <p>Plugins that turn detections into understanding: identity over time, spatial rules, motion, geometry correction and mask visualisation.</p>
+    <ul>
+        <li><strong>Gst-nvtracker</strong> &mdash; multi-object tracking; assigns and maintains stable object IDs across frames on top of detector output. Pluggable low-level trackers (IOU, NvSORT, NvDeepSORT, NvDCF). Full treatment in Part 05.</li>
+        <li><strong>Gst-nvdsanalytics</strong> &mdash; consumes tracker output to evaluate ROI occupancy, line-crossing counts, direction detection and overcrowding, all defined declaratively per-stream in config.</li>
+        <li><strong>Gst-nvof</strong> + <strong>Gst-nvofvisual</strong> &mdash; hardware optical flow computed on the dedicated Optical Flow Accelerator (OFA) engine, with a companion visualiser that renders the flow vector field for debugging.</li>
+        <li><strong>Gst-nvdewarper</strong> &mdash; corrects fisheye and 360&deg; lens geometry, producing aisle-view or spot-view perspective-corrected outputs from a single wide-angle camera.</li>
+        <li><strong>Gst-nvsegvisual</strong> &mdash; renders segmentation-model mask output as a viewable overlay.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Compositing &amp; on-screen display</h2>
+    <p>The plugins that make results visible &mdash; and the connective tissue (<code>nvvideoconvert</code>) that glues format-mismatched elements together throughout every pipeline in this series.</p>
+    <ul>
+        <li><strong>Gst-nvvideoconvert</strong> &mdash; colour-space conversion and scaling on GPU or the VIC (Video Image Compositor) engine on Jetson. The pipeline's universal adapter: whenever two elements disagree on caps, this is what sits between them.</li>
+        <li><strong>Gst-nvmultistreamtiler</strong> &mdash; composites a batch of N streams into a single NxM tiled display surface, so a multi-camera batch can be rendered or encoded as one grid.</li>
+        <li><strong>Gst-nvdsosd</strong> &mdash; draws bounding boxes, text labels, lines, polygons and segmentation masks directly from NvDsFrameMeta/NvDsObjectMeta &mdash; the last stop before metadata becomes pixels.</li>
+        <li><strong>Gst-nvdsvideotemplate</strong> &mdash; a drop-in slot for custom CUDA or third-party library processing, letting you insert bespoke GPU logic into the pipeline without writing a full custom plugin.</li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Output &amp; messaging</h2>
+    <p>Two distinct output paths: pixels leaving as encoded video, and metadata leaving as structured events.</p>
+    <ul>
+        <li><strong>Gst-nvv4l2h264enc / nvv4l2h265enc</strong> &mdash; hardware encode on NVENC, the counterpart to nvv4l2decoder on the way out.</li>
+        <li><strong>Gst-nvmsgconv</strong> + <strong>Gst-nvmsgbroker</strong> &mdash; the messaging pair: nvmsgconv converts NvDsEventMsgMeta into a schema payload (standard DeepStream JSON schema, or custom), nvmsgbroker publishes it to Kafka, MQTT, AMQP, Azure IoT or Redis. Covered fully in Part 07.</li>
+    </ul>
+    <div class="table-wrap">
+        <table>
+            <tr><th>Output need</th><th>Element</th><th>Notes</th></tr>
+            <tr><td>Local display</td><td><code>nveglglessink</code></td><td>EGL/GLES renderer, hardware-composited</td></tr>
+            <tr><td>RTSP re-stream</td><td><code>nvrtspoutsinkbin</code></td><td>encode + RTSP server bin in one element</td></tr>
+            <tr><td>File write</td><td><code>filesink</code></td><td>stock GStreamer, paired with an nv encoder</td></tr>
+            <tr><td>Throughput testing</td><td><code>fakesink</code></td><td>discards buffers, isolates upstream cost</td></tr>
+            <tr><td>Event/metadata publish</td><td><code>nvmsgconv</code> &rarr; <code>nvmsgbroker</code></td><td>Kafka / MQTT / AMQP / Azure IoT / Redis</td></tr>
+        </table>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>The reference pipeline, mapped</h2>
+    <p>This is the graph <code>deepstream-app</code> builds from a standard config file: every plugin from this deck, colour-grouped by the role it plays.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p3b-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+                .p3b-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;}
+                .p3b-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p3b-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p3b-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+                .p3b-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+                .p3b-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p3b-arrowhead);}
+            </style>
+            <defs>
+                <marker id="p3b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <rect class="p3b-box" x="10" y="30" width="70" height="34" rx="6"/>
+            <text class="p3b-label" x="45" y="51">N&times; src</text>
+            <path class="p3b-arrow" d="M80,47 L110,47"/>
+
+            <rect class="p3b-accent" x="110" y="30" width="80" height="34" rx="6"/>
+            <text class="p3b-accentlabel" x="150" y="51">streammux</text>
+            <path class="p3b-arrow" d="M190,47 L220,47"/>
+
+            <rect class="p3b-box" x="220" y="30" width="80" height="34" rx="6"/>
+            <text class="p3b-label" x="260" y="46">nvinfer</text>
+            <text class="p3b-caption" x="260" y="58">PGIE</text>
+            <path class="p3b-arrow" d="M300,47 L330,47"/>
+
+            <rect class="p3b-box" x="330" y="30" width="80" height="34" rx="6"/>
+            <text class="p3b-label" x="370" y="51">nvtracker</text>
+            <path class="p3b-arrow" d="M410,47 L440,47"/>
+
+            <rect class="p3b-box" x="440" y="30" width="80" height="34" rx="6"/>
+            <text class="p3b-label" x="480" y="46">nvinfer</text>
+            <text class="p3b-caption" x="480" y="58">SGIE</text>
+            <path class="p3b-arrow" d="M480,64 L480,94"/>
+
+            <rect class="p3b-box" x="440" y="94" width="80" height="34" rx="6"/>
+            <text class="p3b-label" x="480" y="115">dsanalytics</text>
+            <path class="p3b-arrow" d="M440,111 L410,111"/>
+
+            <rect class="p3b-accent" x="330" y="94" width="80" height="34" rx="6"/>
+            <text class="p3b-accentlabel" x="370" y="107">multistream</text>
+            <text class="p3b-accentlabel" x="370" y="119">tiler</text>
+            <path class="p3b-arrow" d="M330,111 L300,111"/>
+
+            <rect class="p3b-box" x="220" y="94" width="80" height="34" rx="6"/>
+            <text class="p3b-label" x="260" y="115">videoconvert</text>
+            <path class="p3b-arrow" d="M220,111 L190,111"/>
+
+            <rect class="p3b-accent" x="110" y="94" width="80" height="34" rx="6"/>
+            <text class="p3b-accentlabel" x="150" y="115">nvdsosd</text>
+            <path class="p3b-arrow" d="M150,128 L150,158"/>
+
+            <rect class="p3b-box" x="110" y="158" width="80" height="34" rx="6"/>
+            <text class="p3b-label" x="150" y="179">tee</text>
+
+            <path class="p3b-arrow" d="M150,192 L150,222"/>
+            <rect class="p3b-box" x="80" y="222" width="90" height="34" rx="6"/>
+            <text class="p3b-label" x="125" y="243">eglglessink</text>
+
+            <path class="p3b-arrow" d="M190,175 L260,222"/>
+            <rect class="p3b-box" x="220" y="222" width="90" height="34" rx="6"/>
+            <text class="p3b-label" x="265" y="238">h264/h265</text>
+            <text class="p3b-caption" x="265" y="250">enc</text>
+            <path class="p3b-arrow" d="M310,239 L340,239"/>
+
+            <rect class="p3b-box" x="340" y="222" width="110" height="34" rx="6"/>
+            <text class="p3b-label" x="395" y="238">rtspoutsink</text>
+            <text class="p3b-caption" x="395" y="250">bin</text>
+
+            <path class="p3b-arrow" d="M190,180 L440,300"/>
+            <rect class="p3b-box" x="440" y="286" width="90" height="34" rx="6"/>
+            <text class="p3b-label" x="485" y="303">nvmsgconv</text>
+            <path class="p3b-arrow" d="M530,303 L560,303"/>
+
+            <rect class="p3b-box" x="560" y="286" width="100" height="34" rx="6"/>
+            <text class="p3b-label" x="610" y="303">nvmsgbroker</text>
+            <text class="p3b-caption" x="610" y="316">Kafka / MQTT&hellip;</text>
+
+            <text class="p3b-title" x="10" y="20">deepstream-app reference graph</text>
+        </svg>
+    </div>
+    <p>Batching/routing plugins sit in green; everything else follows the role colours from the toolbox overview. The tee after nvdsosd is what lets one pipeline drive display, re-stream and metadata-publish simultaneously without re-running inference.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Reading a plugin</h2>
+    <p>Every DeepStream plugin is a normal GStreamer element, which means <code>gst-inspect-1.0</code> is the single most useful tool for working out how to wire one in: it lists pads, caps and every configurable property.</p>
+    <div class="code-block">
+        <div class="code-header">bash</div>
+        <pre><code>gst-inspect-1.0 nvinfer</code></pre>
+    </div>
+    <p>Look for two things in the output: the <strong>Pad Templates</strong> section, which shows sink/src caps such as <code>video/x-raw(memory:NVMM)</code> &mdash; confirming the element expects GPU-resident batched buffers, not system memory &mdash; and the <strong>Element Properties</strong> section, which lists every property (e.g. <code>config-file-path</code>, <code>batch-size</code>, <code>unique-id</code>) with its type, default and whether it's required.</p>
+    <div class="callout">
+        <div class="callout-label">In practice</div>
+        <p>A caps mismatch between two elements (e.g. one plugin emitting host memory, the next expecting NVMM) is the most common cause of a pipeline that builds but refuses to play. <code>gst-inspect-1.0 &lt;element&gt;</code> on both sides settles it in seconds.</p>
+    </div>
+</section>
+
+<nav class="deck-nav"><a href="part2.html">&larr; Part 02 · GStreamer Foundations</a><a href="index.html">Index</a><a class="next" href="part4.html">Part 04 · Inference &amp; TensorRT/Triton &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 01 &mdash; The Big Picture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+<div class="series-label">NVIDIA DeepStream &middot; Part 01</div>
+<h1>The Vision-AI Pipeline, <span class="accent">Industrialised</span></h1>
+<p class="subtitle">DeepStream turns dozens to thousands of live video streams into real-time structured insight &mdash; decode, batch, infer, track, analyse and publish, hardware-accelerated end-to-end on NVIDIA silicon, from a Jetson at the edge to a Blackwell server in the cloud.</p>
+<div class="tags">
+<span class="tag">Streaming Analytics</span>
+<span class="tag">GStreamer</span>
+<span class="tag">TensorRT</span>
+<span class="tag">Triton</span>
+<span class="tag">Jetson + dGPU</span>
+<span class="tag">Metropolis</span>
+<span class="tag">Edge&rarr;Cloud</span>
+</div>
+<div class="pipeline">
+<span class="pipeline-step">Decode</span><span class="pipeline-arrow">&rarr;</span>
+<span class="pipeline-step">Batch</span><span class="pipeline-arrow">&rarr;</span>
+<span class="pipeline-step">Infer</span><span class="pipeline-arrow">&rarr;</span>
+<span class="pipeline-step">Track</span><span class="pipeline-arrow">&rarr;</span>
+<span class="pipeline-step">Analyse</span><span class="pipeline-arrow">&rarr;</span>
+<span class="pipeline-step">Overlay</span><span class="pipeline-arrow">&rarr;</span>
+<span class="pipeline-step">Stream/Publish</span>
+</div>
+</header>
+
+<section class="slide" id="slide-00">
+<div class="slide-number">00</div>
+<h2>Contents</h2>
+<ul class="contents-list">
+<li><a href="#slide-01">The problem: video doesn't scale in Python</a></li>
+<li><a href="#slide-02">What DeepStream actually is</a></li>
+<li><a href="#slide-03">The canonical pipeline</a></li>
+<li><a href="#slide-04">Why end-to-end acceleration matters</a></li>
+<li><a href="#slide-05">Where it runs: edge to cloud</a></li>
+<li><a href="#slide-06">Use cases and pretrained starting points</a></li>
+<li><a href="#slide-07">The stack, layer by layer</a></li>
+<li><a href="#slide-08">Versions &mdash; and what this series covers</a></li>
+</ul>
+</section>
+
+<section class="slide" id="slide-01">
+<div class="slide-number">01</div>
+<h2>The problem: video doesn't scale in Python</h2>
+<p>Take a real deployment brief: <strong>200 RTSP camera streams</strong>, each needs person and vehicle detection, multi-object tracking, and a message on a Kafka topic whenever someone loiters in a zone. Sounds like a for-loop around OpenCV and a PyTorch model. It isn't.</p>
+<p>Each stream must be demuxed, decoded, colour-converted, resized, batched for the GPU, run through one or more neural networks, tracked frame-to-frame, checked against business rules, annotated, re-encoded, and its metadata shipped onward &mdash; all within a latency budget, at an aggregate frame rate in the thousands, on a fixed hardware budget per stream.</p>
+<p>A naive pipeline built with <code>cv2.VideoCapture</code> and a Python inference loop decodes on the CPU, copies every frame across PCIe into GPU memory for inference, then copies results back out. Each stream adds CPU decode load and PCIe traffic; the approach saturates a handful of streams and the <strong>cost-per-stream</strong> becomes uneconomic long before the GPU compute is exhausted.</p>
+<div class="callout">
+<div class="callout-label">The insight</div>
+<p>The bottleneck usually isn't inference FLOPs &mdash; it's everything around inference: decode, memory copies, batching and orchestration. <strong>DeepStream</strong> is NVIDIA's answer: a streaming-analytics SDK that keeps the entire pipeline resident on the GPU, from decode to encode, so the hardware you paid for is spent on useful work.</p>
+</div>
+</section>
+
+<section class="slide" id="slide-02">
+<div class="slide-number">02</div>
+<h2>What DeepStream actually is</h2>
+<p>DeepStream is the streaming-video-analytics layer of the <strong>NVIDIA Metropolis</strong> stack: a set of hardware-accelerated <strong>GStreamer</strong> plugins, supporting libraries, reference applications, Python (<code>pyds</code>) and C/C++ bindings, plus low-code tooling &mdash; <strong>Graph Composer</strong> and the newer <strong>Service Maker</strong> &mdash; for assembling pipelines without hand-writing GStreamer boilerplate.</p>
+<h3>What it does, concretely</h3>
+<ul>
+<li>Ingests file, RTSP, USB and CSI camera sources, and decodes video on the dedicated <strong>NVDEC</strong> hardware block.</li>
+<li>Batches frames from many independent streams into a single GPU tensor via <strong>nvstreammux</strong>.</li>
+<li>Runs inference with <strong>TensorRT</strong> (embedded) or the <strong>Triton Inference Server</strong> (multi-framework, remote or embedded).</li>
+<li>Tracks objects across frames with <strong>nvtracker</strong> (IOU, NvSORT, NvDeepSORT, NvDCF).</li>
+<li>Applies rule-based and analytic logic &mdash; line-crossing, loitering, direction &mdash; and draws overlays.</li>
+<li>Re-encodes with <strong>NVENC</strong> and publishes structured metadata to message brokers for downstream consumption.</li>
+</ul>
+<p>Everything above is a swappable GStreamer element with well-defined metadata (<code>NvDsBatchMeta</code>) flowing between them, which is why DeepStream pipelines are configured, not just coded.</p>
+</section>
+
+<section class="slide" id="slide-03">
+<div class="slide-number">03</div>
+<h2>The canonical pipeline</h2>
+<p>Almost every DeepStream application is a variation on the same skeleton. Each stage maps to a specific hardware engine or a specific plugin &mdash; this is what "hardware-accelerated end-to-end" means in practice.</p>
+<div class="canvas-wrap">
+<svg viewBox="0 0 720 400" width="720" height="400" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<marker id="p1s3-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/></marker>
+</defs>
+<style>
+.p1s3-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+.p1s3-box-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
+.p1s3-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s3-label-accent{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s3-sub{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.p1s3-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+.p1s3-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p1s3-arrow);}
+.p1s3-dash{stroke:#8b949e;stroke-width:1.2;fill:none;stroke-dasharray:3,3;marker-end:url(#p1s3-arrow);}
+</style>
+
+<text x="10" y="20" class="p1s3-title">deepstream-app pipeline (single stream, replicated N&times;)</text>
+
+<rect x="10" y="50" width="80" height="40" rx="6" class="p1s3-box"/>
+<text x="50" y="66" class="p1s3-label">source</text>
+<text x="50" y="80" class="p1s3-sub">RTSP/file</text>
+
+<line x1="90" y1="70" x2="118" y2="70" class="p1s3-arrow"/>
+
+<rect x="120" y="50" width="100" height="40" rx="6" class="p1s3-box"/>
+<text x="170" y="66" class="p1s3-label">nvv4l2decoder</text>
+<text x="170" y="80" class="p1s3-sub">NVDEC</text>
+
+<line x1="220" y1="70" x2="248" y2="70" class="p1s3-arrow"/>
+
+<rect x="250" y="50" width="110" height="40" rx="6" class="p1s3-box-accent"/>
+<text x="305" y="66" class="p1s3-label-accent">nvstreammux</text>
+<text x="305" y="80" class="p1s3-sub">batch N streams</text>
+
+<line x1="305" y1="90" x2="305" y2="118" class="p1s3-arrow"/>
+
+<rect x="235" y="120" width="140" height="40" rx="6" class="p1s3-box-accent"/>
+<text x="305" y="136" class="p1s3-label-accent">nvinfer (PGIE)</text>
+<text x="305" y="150" class="p1s3-sub">TensorRT / Triton</text>
+
+<line x1="305" y1="160" x2="305" y2="188" class="p1s3-arrow"/>
+
+<rect x="245" y="190" width="120" height="40" rx="6" class="p1s3-box"/>
+<text x="305" y="206" class="p1s3-label">nvtracker</text>
+<text x="305" y="220" class="p1s3-sub">NvDCF / DeepSORT</text>
+
+<line x1="305" y1="230" x2="305" y2="258" class="p1s3-arrow"/>
+
+<rect x="245" y="260" width="120" height="40" rx="6" class="p1s3-box"/>
+<text x="305" y="276" class="p1s3-label">nvinfer (SGIE)</text>
+<text x="305" y="290" class="p1s3-sub">classifier(s)</text>
+
+<line x1="305" y1="300" x2="305" y2="328" class="p1s3-arrow"/>
+
+<rect x="230" y="330" width="150" height="40" rx="6" class="p1s3-box"/>
+<text x="305" y="346" class="p1s3-label">nvdsanalytics</text>
+<text x="305" y="360" class="p1s3-sub">ROI, line-cross, loiter</text>
+
+<line x1="380" y1="350" x2="408" y2="350" class="p1s3-arrow"/>
+
+<rect x="410" y="330" width="130" height="40" rx="6" class="p1s3-box"/>
+<text x="475" y="346" class="p1s3-label">nvdsosd</text>
+<text x="475" y="360" class="p1s3-sub">overlay draw</text>
+
+<line x1="540" y1="350" x2="568" y2="350" class="p1s3-arrow"/>
+
+<rect x="570" y="330" width="130" height="40" rx="6" class="p1s3-box"/>
+<text x="635" y="346" class="p1s3-label">NVENC / sink</text>
+<text x="635" y="360" class="p1s3-sub">encode &amp; display</text>
+
+<line x1="475" y1="330" x2="475" y2="90" class="p1s3-dash"/>
+<line x1="475" y1="90" x2="380" y2="90" class="p1s3-dash"/>
+
+<rect x="410" y="120" width="130" height="40" rx="6" class="p1s3-box"/>
+<text x="475" y="136" class="p1s3-label">nvmultistream</text>
+<text x="475" y="150" class="p1s3-sub">tiler (display)</text>
+
+<rect x="560" y="190" width="140" height="40" rx="6" class="p1s3-box"/>
+<text x="630" y="206" class="p1s3-label">nvmsgconv</text>
+<text x="630" y="220" class="p1s3-sub">meta &rarr; JSON</text>
+
+<line x1="365" y1="345" x2="580" y2="230" class="p1s3-dash"/>
+<line x1="630" y1="230" x2="630" y2="258" class="p1s3-arrow"/>
+
+<rect x="560" y="260" width="140" height="40" rx="6" class="p1s3-box-accent"/>
+<text x="630" y="276" class="p1s3-label-accent">nvmsgbroker</text>
+<text x="630" y="290" class="p1s3-sub">Kafka/MQTT/AMQP</text>
+
+<line x1="630" y1="300" x2="630" y2="328" class="p1s3-arrow"/>
+<text x="630" y="345" class="p1s3-label-accent">cloud</text>
+</svg>
+</div>
+<p>The <strong>nvstreammux</strong> plugin is the linchpin: it merges frames from many independent stream branches into one batched buffer so a single <strong>nvinfer</strong> call amortises fixed inference overhead across all of them. Everything from decode to overlay lives in GPU-resident <strong>NvBufSurface</strong> memory &mdash; nothing round-trips to host RAM until you choose to display or write it out.</p>
+</section>
+
+<section class="slide" id="slide-04">
+<div class="slide-number">04</div>
+<h2>Why end-to-end acceleration matters</h2>
+<p>The defining architectural decision in DeepStream is <strong>zero-copy GPU memory</strong>: buffers live in <strong>NVMM</strong> (NVIDIA Multimedia Memory), wrapped as <strong>NvBufSurface</strong>, and every plugin in the chain &mdash; decoder, colour-space converter, inference, tracker, encoder &mdash; operates on the same underlying allocation. Frames are never copied to host memory just to move between pipeline stages.</p>
+<div class="diagram-grid cols-2">
+<div class="diagram-panel"><h4>CPU/OpenCV pipeline</h4>
+<p>Decode on CPU core &middot; copy frame host&rarr;device for inference &middot; run model &middot; copy results device&rarr;host &middot; draw with OpenCV &middot; encode on CPU. Each stream competes for CPU cycles and PCIe bandwidth; throughput collapses well before the GPU is saturated.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>DeepStream pipeline</h4>
+<p>Decode on NVDEC &middot; batch and infer on GPU tensor cores via TensorRT &middot; track and analyse in GPU memory &middot; overlay drawn on GPU &middot; encode on NVENC. CPU only orchestrates; PCIe traffic is near zero per frame.</p>
+</div>
+</div>
+<p>Because decode, inference and encode use separate, dedicated silicon (NVDEC/NVENC run independently of the CUDA cores doing inference), a single GPU can decode, infer on, and re-encode many streams concurrently without those stages contending for the same compute.</p>
+<div class="callout">
+<div class="callout-label">Why it matters</div>
+<p>DeepStream performance is quoted as <strong>aggregate streams &times; fps</strong> for a given model and precision on a given SKU, and the metric operators actually budget against is <strong>cost-per-stream</strong> &mdash; dollars, watts and rack-units per camera analysed in real time. End-to-end GPU residency is what makes that number competitive against CPU-bound approaches.</p>
+</div>
+</section>
+
+<section class="slide" id="slide-05">
+<div class="slide-number">05</div>
+<h2>Where it runs: edge to cloud</h2>
+<p>DeepStream targets one programming model across two very different deployment footprints, which is central to Metropolis's edge-to-cloud story.</p>
+<div class="diagram-flow">
+<div class="diagram-box">Camera / RTSP</div>
+<div class="diagram-arrow">&rarr;</div>
+<div class="diagram-box accent">Jetson edge device</div>
+<div class="diagram-arrow">&rarr;</div>
+<div class="diagram-box dim">local inference + filtering</div>
+<div class="diagram-arrow">&rarr;</div>
+<div class="diagram-box accent">x86 dGPU server / cloud</div>
+<div class="diagram-arrow">&rarr;</div>
+<div class="diagram-box">aggregation, dashboards, storage</div>
+</div>
+<h3>Edge</h3>
+<p><strong>Jetson</strong> modules &mdash; Orin Nano, Orin NX, AGX Orin, and the newer <strong>AGX Thor</strong> &mdash; run DeepStream directly against on-board cameras or a handful of RTSP feeds, doing detection, tracking and event filtering close to the sensor, then sending only metadata (not video) onward to save bandwidth.</p>
+<h3>Core / cloud</h3>
+<p>x86 servers with discrete GPUs &mdash; <strong>T4, Ampere, Ada Lovelace, Hopper, Blackwell</strong> &mdash; run the same pipelines at much higher aggregate stream counts, packaged as containers pulled from <strong>NGC</strong> and orchestrated as <strong>Kubernetes</strong> microservices for horizontal scale-out across a fleet of cameras or sites.</p>
+<p>The same GStreamer plugin graph, and largely the same config files, run on both; what changes is stream count per device and which precision/engine is practical for the on-board compute.</p>
+</section>
+
+<section class="slide" id="slide-06">
+<div class="slide-number">06</div>
+<h2>Use cases and pretrained starting points</h2>
+<p>DeepStream is domain-agnostic plumbing; the value comes from the models and rules dropped into <strong>nvinfer</strong> and <strong>nvdsanalytics</strong>. Common production domains:</p>
+<div class="diagram-grid cols-3">
+<div class="diagram-panel accent-border"><h4>Smart cities / IVA</h4>
+<p>Traffic counting, incident detection, intelligent video analytics across municipal camera networks.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>Retail</h4>
+<p>Queue-length and dwell-time analytics, shelf monitoring, footfall counting.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>Industrial inspection</h4>
+<p>Defect detection on production lines, PPE compliance, safety-zone intrusion.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>Access &amp; parking</h4>
+<p>ANPR/LPR for gate control and parking occupancy, badge/plate matching.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>Logistics</h4>
+<p>Dock and yard monitoring, package counting, loading-bay safety.</p>
+</div>
+<div class="diagram-panel accent-border"><h4>Healthcare &amp; sports</h4>
+<p>Patient-fall detection, hand-hygiene compliance, player and ball tracking.</p>
+</div>
+</div>
+<p>Rather than training from scratch, most teams start from <strong>TAO</strong> (Train, Adapt, Optimize) pretrained models purpose-built for DeepStream: <strong>PeopleNet</strong> (person/face/bag detection), <strong>TrafficCamNet</strong> (vehicle detection), and <strong>LPRNet</strong> (license-plate recognition), then fine-tune on site-specific data.</p>
+</section>
+
+<section class="slide" id="slide-07">
+<div class="slide-number">07</div>
+<h2>The stack, layer by layer</h2>
+<div class="canvas-wrap">
+<svg viewBox="0 0 720 320" width="720" height="320" xmlns="http://www.w3.org/2000/svg">
+<style>
+.p1s7-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+.p1s7-box-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
+.p1s7-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s7-label-accent{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s7-tier{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:start;text-transform:uppercase;letter-spacing:0.05em;}
+</style>
+
+<text x="10" y="18" class="p1s7-tier">application layer</text>
+<rect x="10" y="24" width="165" height="42" rx="6" class="p1s7-box-accent"/>
+<text x="92" y="42" class="p1s7-label-accent">deepstream-app</text>
+<text x="92" y="56" class="p1s7-label-accent" style="font-size:9px;">config-driven</text>
+<rect x="185" y="24" width="165" height="42" rx="6" class="p1s7-box-accent"/>
+<text x="267" y="42" class="p1s7-label-accent">C++ / Python</text>
+<text x="267" y="56" class="p1s7-label-accent" style="font-size:9px;">pyds bindings</text>
+<rect x="360" y="24" width="165" height="42" rx="6" class="p1s7-box-accent"/>
+<text x="442" y="42" class="p1s7-label-accent">Graph Composer</text>
+<text x="442" y="56" class="p1s7-label-accent" style="font-size:9px;">low-code graphs</text>
+<rect x="535" y="24" width="175" height="42" rx="6" class="p1s7-box-accent"/>
+<text x="622" y="42" class="p1s7-label-accent">Service Maker</text>
+<text x="622" y="56" class="p1s7-label-accent" style="font-size:9px;">microservice glue</text>
+
+<text x="10" y="92" class="p1s7-tier">deepstream plugins &amp; sdk</text>
+<rect x="10" y="98" width="700" height="42" rx="6" class="p1s7-box"/>
+<text x="360" y="120" class="p1s7-label">nvstreammux &middot; nvinfer &middot; nvtracker &middot; nvdsanalytics &middot; nvdsosd &middot; nvmsgconv/broker &middot; NvDsBatchMeta</text>
+
+<text x="10" y="166" class="p1s7-tier">libraries</text>
+<rect x="10" y="172" width="165" height="42" rx="6" class="p1s7-box"/>
+<text x="92" y="194" class="p1s7-label">CUDA</text>
+<rect x="185" y="172" width="165" height="42" rx="6" class="p1s7-box"/>
+<text x="267" y="194" class="p1s7-label">TensorRT</text>
+<rect x="360" y="172" width="165" height="42" rx="6" class="p1s7-box"/>
+<text x="442" y="194" class="p1s7-label">Triton</text>
+<rect x="535" y="172" width="175" height="42" rx="6" class="p1s7-box"/>
+<text x="622" y="194" class="p1s7-label">Multimedia API</text>
+
+<text x="10" y="240" class="p1s7-tier">hardware</text>
+<rect x="10" y="246" width="135" height="42" rx="6" class="p1s7-box"/>
+<text x="77" y="268" class="p1s7-label">NVDEC</text>
+<rect x="155" y="246" width="135" height="42" rx="6" class="p1s7-box"/>
+<text x="222" y="268" class="p1s7-label">GPU / CUDA cores</text>
+<rect x="300" y="246" width="135" height="42" rx="6" class="p1s7-box"/>
+<text x="367" y="268" class="p1s7-label">DLA</text>
+<rect x="445" y="246" width="135" height="42" rx="6" class="p1s7-box"/>
+<text x="512" y="268" class="p1s7-label">NVENC</text>
+<rect x="585" y="246" width="125" height="42" rx="6" class="p1s7-box"/>
+<text x="647" y="268" class="p1s7-label">VIC</text>
+
+<line x1="92" y1="66" x2="92" y2="98" stroke="#76B900" stroke-width="1"/>
+<line x1="360" y1="140" x2="360" y2="172" stroke="#76B900" stroke-width="1"/>
+<line x1="360" y1="214" x2="360" y2="246" stroke="#76B900" stroke-width="1"/>
+</svg>
+</div>
+<p>Everything above the plugin layer talks to the same underlying element graph: <code>deepstream-app</code> reads a config file and instantiates a fixed pipeline; C++/Python apps build the graph programmatically via <code>pyds</code>; Graph Composer and Service Maker generate and orchestrate that same graph visually or as containerised microservices.</p>
+</section>
+
+<section class="slide" id="slide-08">
+<div class="slide-number">08</div>
+<h2>Versions &mdash; and what this series covers</h2>
+<p>DeepStream ships on a roughly annual major cadence, paired with <strong>JetPack</strong> on Jetson and a matching CUDA/TensorRT/driver combination on x86. The current line spans <strong>DeepStream 7.x through 9.x</strong>, tracking newer TensorRT versions, expanded Triton integration, and deeper <strong>Metropolis Microservices</strong> support for cloud-native, containerised deployment. Application config formats and the core plugin set have stayed remarkably stable across this range, which is why pipelines built years ago still largely run.</p>
+<h3>Roadmap for this series</h3>
+<ul class="contents-list">
+<li><a href="part2.html">Part 02 &middot; GStreamer Foundations &amp; Architecture</a></li>
+<li><a href="part3.html">Part 03 &middot; The Plugin Toolbox</a></li>
+<li><a href="part4.html">Part 04 &middot; Inference: TensorRT &amp; Triton</a></li>
+<li><a href="part5.html">Part 05 &middot; Multi-Object Tracking</a></li>
+<li><a href="part6.html">Part 06 &middot; Metadata &amp; Analytics</a></li>
+<li><a href="part7.html">Part 07 &middot; Messaging &amp; IoT Integration</a></li>
+<li><a href="part8.html">Part 08 &middot; Building &amp; Deploying at Scale</a></li>
+</ul>
+<div class="callout">
+<div class="callout-label">In practice</div>
+<p>Part 02 starts where every real DeepStream project starts: understanding <strong>GStreamer</strong> itself &mdash; elements, pads, bins, caps negotiation and the state machine &mdash; because DeepStream is, architecturally, a disciplined set of GStreamer plugins wearing NVIDIA silicon underneath.</p>
+</div>
+</section>
+
+<nav class="deck-nav"><a href="index.html">&larr; Series Index</a><a class="next" href="part2.html">Part 02 &middot; GStreamer Foundations &amp; Architecture &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

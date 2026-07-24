@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 07 &mdash; Messaging, Smart Record &amp; IoT</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream · Part 07</div>
+    <h1>From Edge Insight to the <span class="accent">Cloud</span></h1>
+    <p class="subtitle">Analytics only pays off once it reaches a dashboard, an alert or a system of record. DeepStream turns per-object metadata into structured messages, records event clips automatically, and can take commands back from the cloud &mdash; closing the loop between edge and control plane.</p>
+    <div class="tags">
+        <span class="tag">nvmsgconv</span>
+        <span class="tag">nvmsgbroker</span>
+        <span class="tag">Kafka</span>
+        <span class="tag">MQTT</span>
+        <span class="tag">Azure IoT</span>
+        <span class="tag">Smart Record</span>
+        <span class="tag">REST API</span>
+    </div>
+    <div class="pipeline">
+        <div class="pipeline-step">analytics</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">tee</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">nvmsgconv</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">nvmsgbroker</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">broker</div><div class="pipeline-arrow">&rarr;</div>
+        <div class="pipeline-step">cloud</div>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Contents</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">The last mile</a></li>
+        <li><a href="#slide-02">Gst-nvmsgconv &mdash; metadata to payload</a></li>
+        <li><a href="#slide-03">Gst-nvmsgbroker &mdash; to the broker</a></li>
+        <li><a href="#slide-04">Wiring it into the pipeline</a></li>
+        <li><a href="#slide-05">Smart Record</a></li>
+        <li><a href="#slide-06">Bidirectional / cloud-to-edge</a></li>
+        <li><a href="#slide-07">Dynamic streams &amp; the REST API</a></li>
+        <li><a href="#slide-08">Edge-to-cloud reference architecture</a></li>
+        <li><a href="#slide-09">Takeaways</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>The last mile</h2>
+    <p>Everything in Parts 05 and 06 &mdash; tracked objects, analytics-rule events, tensor metadata &mdash; lives in <strong>NvDsBatchMeta</strong> inside the process. That's fine for on-screen bounding boxes, but a security desk, a BI dashboard or a control-room alert has no way to reach into GPU memory. Metadata that never leaves the box is worthless outside it.</p>
+    <p>This part covers the four pieces that close that gap:</p>
+    <ul>
+        <li><strong>Serialising</strong> events into a structured payload (<code>Gst-nvmsgconv</code>).</li>
+        <li><strong>Publishing</strong> that payload to a message broker (<code>Gst-nvmsgbroker</code>).</li>
+        <li><strong>Recording</strong> the video around an event as an evidence clip (Smart Record).</li>
+        <li><strong>Receiving</strong> commands back from the cloud &mdash; and reconfiguring the pipeline live via REST.</li>
+    </ul>
+    <p>Together they turn a DeepStream instance from an isolated video pipeline into one node in a managed, cloud-connected fleet.</p>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Gst-nvmsgconv &mdash; metadata to payload</h2>
+    <p>Sits after the analytics stage and converts <strong>NvDsEventMsgMeta</strong> &mdash; the event-level metadata a probe or <code>nvdsanalytics</code> attaches to a frame &mdash; into a serialised payload, JSON or <strong>protobuf</strong>, ready to hand to a broker.</p>
+    <ul>
+        <li><strong>Full / DeepStream schema</strong> &mdash; rich, per-object events carrying sensor identity, place/location context, and analytics-module detail (which rule fired, direction, ROI). This is what a video-analytics platform expects.</li>
+        <li><strong>Minimal schema</strong> &mdash; a compact per-frame or per-object payload with just the essentials (timestamp, sensor id, object list). Lower bandwidth, useful for high-frequency telemetry or constrained links.</li>
+        <li><strong>Custom schema</strong> &mdash; supplied via a custom conversion library (<code>msg2p-lib</code>) implementing the msgconv interface, for teams whose downstream system expects its own event shape.</li>
+    </ul>
+    <div class="code-block">
+        <div class="code-header">msgconv payload · JSON (Full schema, object event)</div>
+        <pre><code>{
+  "messageid": "8f1a2e3c-9b4d-4a7e-b6c1-2d5f9e0a7c11",
+  "mdsversion": "1.0",
+  "@timestamp": "2026-07-24T10:15:32.118Z",
+  "sensorId": "cam-loading-bay-03",
+  "sensor": {
+    "id": "cam-loading-bay-03",
+    "type": "Camera",
+    "location": { "lat": 53.8008, "lon": -1.5491, "alt": 0 },
+    "description": "Loading bay, north entrance"
+  },
+  "event": {
+    "id": "e-004417",
+    "type": "entry"
+  },
+  "object": {
+    "id": "17",
+    "speed": 0.0,
+    "direction": 0.0,
+    "orientation": 0.0,
+    "vehicle": null,
+    "person": {
+      "age": 0, "gender": "", "hair": "", "cap": "",
+      "apparel": "hi-vis-vest", "confidence": 0.91
+    },
+    "bbox": { "topleftx": 412, "toplefty": 88, "bottomrightx": 501, "bottomrighty": 310 }
+  },
+  "videoPath": ""
+}</code></pre>
+    </div>
+    <p>Note this is <strong>per event</strong>, not per frame &mdash; msgconv only emits when a probe populates <code>NvDsEventMsgMeta</code>, so payload volume tracks meaningful occurrences, not raw frame rate.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Gst-nvmsgbroker &mdash; to the broker</h2>
+    <p>Takes the serialised payload from nvmsgconv and hands it off asynchronously to an external message system, via a <strong>pluggable protocol adapter</strong> &mdash; a shared library selected with <code>proto-lib</code> plus a broker <code>connection-str</code>. Swapping brokers is a config change, not a pipeline rewrite.</p>
+    <div class="table-wrap">
+        <table>
+            <tr><th>Adapter</th><th>Protocol library</th><th>Typical use</th></tr>
+            <tr><td>Kafka</td><td><code>libnvds_kafka_proto.so</code></td><td>High-throughput event streaming into a data platform; consumer groups, topic partitioning, replay from offset.</td></tr>
+            <tr><td>AMQP (RabbitMQ)</td><td><code>libnvds_amqp_proto.so</code></td><td>Exchange/queue routing with delivery guarantees; enterprise message-bus integration.</td></tr>
+            <tr><td>MQTT</td><td><code>libnvds_mqtt_proto.so</code></td><td>Lightweight pub/sub over constrained or wireless links; large fan-out of edge devices to a broker.</td></tr>
+            <tr><td>Azure IoT Hub</td><td><code>libnvds_azure_proto.so</code></td><td>Managed cloud ingestion with device identity, twin state and built-in cloud&rarr;edge command channel.</td></tr>
+            <tr><td>Redis</td><td><code>libnvds_redis_proto.so</code></td><td>Low-latency pub/sub or stream ingestion for local/edge-cluster fan-out ahead of a heavier pipeline.</td></tr>
+        </table>
+    </div>
+    <p>Sends are non-blocking: nvmsgbroker queues the payload and returns a delivery status via callback, so a slow or unreachable broker degrades message delivery rather than stalling video processing upstream.</p>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>Wiring it into the pipeline</h2>
+    <p>The messaging path taps off the main pipeline rather than sitting inline &mdash; a <code>tee</code> after the analytics stage feeds display/encode on one branch and msgconv/msgbroker on the other, so a broker hiccup can't touch the video path.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 260" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p7a-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+                .p7a-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;}
+                .p7a-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p7a-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p7a-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:10px;text-anchor:middle;}
+                .p7a-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+                .p7a-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p7a-arrowhead);}
+            </style>
+            <defs>
+                <marker id="p7a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <rect class="p7a-box" x="10" y="60" width="100" height="34" rx="6"/>
+            <text class="p7a-label" x="60" y="81">dsanalytics</text>
+            <path class="p7a-arrow" d="M110,77 L140,77"/>
+
+            <rect class="p7a-box" x="140" y="60" width="60" height="34" rx="6"/>
+            <text class="p7a-label" x="170" y="81">tee</text>
+
+            <path class="p7a-arrow" d="M170,60 L170,25 L260,25"/>
+            <rect class="p7a-box" x="260" y="8" width="120" height="34" rx="6"/>
+            <text class="p7a-label" x="320" y="26">osd / encode</text>
+            <text class="p7a-caption" x="320" y="38">/ display</text>
+
+            <path class="p7a-arrow" d="M200,77 L260,77"/>
+            <rect class="p7a-box" x="260" y="60" width="120" height="34" rx="6"/>
+            <text class="p7a-label" x="320" y="78">probe</text>
+            <text class="p7a-caption" x="320" y="90">writes NvDsEventMsgMeta</text>
+
+            <path class="p7a-arrow" d="M380,77 L410,77"/>
+            <rect class="p7a-accent" x="410" y="60" width="100" height="34" rx="6"/>
+            <text class="p7a-accentlabel" x="460" y="81">nvmsgconv</text>
+
+            <path class="p7a-arrow" d="M510,77 L540,77"/>
+            <rect class="p7a-accent" x="540" y="60" width="110" height="34" rx="6"/>
+            <text class="p7a-accentlabel" x="595" y="81">nvmsgbroker</text>
+
+            <path class="p7a-arrow" d="M650,77 L690,77"/>
+            <text class="p7a-caption" x="700" y="72" text-anchor="start">Kafka /</text>
+            <text class="p7a-caption" x="700" y="84" text-anchor="start">MQTT&hellip;</text>
+
+            <rect class="p7a-box" x="260" y="130" width="120" height="70" rx="6"/>
+            <text class="p7a-label" x="320" y="152">event trigger</text>
+            <text class="p7a-caption" x="320" y="168">line-cross / ROI</text>
+            <text class="p7a-caption" x="320" y="182">enter, rate-limited</text>
+            <text class="p7a-caption" x="320" y="196">&amp; de-duplicated</text>
+            <path class="p7a-arrow" d="M320,130 L320,94"/>
+
+            <text class="p7a-title" x="10" y="230">Video path (top) stays isolated from the messaging tap (bottom)</text>
+            <text class="p7a-caption" x="10" y="246" text-anchor="start">Probe fires selectively &mdash; not every frame &mdash; to keep the broker topic from flooding.</text>
+        </svg>
+    </div>
+    <p>The event-generating probe is application logic: it inspects <code>NvDsAnalyticsFrameMeta</code> or object state, decides whether this frame is <em>newsworthy</em>, and only then allocates and attaches an <code>NvDsEventMsgMeta</code>. Rate-limiting and de-duplication (don't re-report the same object crossing the same line every frame it's tracked) live here &mdash; msgconv/msgbroker will happily serialise and send everything you give them.</p>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>Smart Record</h2>
+    <p>Messaging tells you <em>that</em> something happened; Smart Record captures the video <em>of</em> it. <code>Gst-nvurisrcbin</code> (single source) and <code>Gst-nvmultiurisrcbin</code> (multi-source) each keep a rolling, encoded-video <strong>ring buffer in memory</strong> per stream, continuously overwriting itself.</p>
+    <ul>
+        <li>An application trigger &mdash; an analytics event, or a command arriving from the cloud &mdash; calls the smart-record start API.</li>
+        <li>The written clip includes <strong>pre-event history</strong> already sitting in the ring buffer, plus a configurable post-event tail, so the recording captures the run-up to the trigger, not just the moment after it.</li>
+        <li>Output is a standalone <strong>mp4</strong> file on disk, named and indexed for later retrieval &mdash; the standard pattern for evidence/incident clips tied to a specific alert.</li>
+    </ul>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 200" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p7b-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+                .p7b-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;}
+                .p7b-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p7b-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:12px;text-anchor:middle;}
+                .p7b-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:10px;text-anchor:middle;}
+                .p7b-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+                .p7b-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p7b-arrowhead);}
+            </style>
+            <defs>
+                <marker id="p7b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <rect class="p7b-box" x="20" y="60" width="380" height="40" rx="6"/>
+            <text class="p7b-label" x="210" y="84">ring buffer &mdash; encoded video, continuously overwritten</text>
+            <rect class="p7b-accent" x="230" y="60" width="60" height="40" rx="0"/>
+            <text class="p7b-caption" x="260" y="55">event lands here</text>
+
+            <path class="p7b-arrow" d="M260,100 L260,130"/>
+            <rect class="p7b-box" x="150" y="130" width="220" height="34" rx="6"/>
+            <text class="p7b-label" x="260" y="151">smart-record trigger</text>
+
+            <path class="p7b-arrow" d="M400,80 L440,80"/>
+            <rect class="p7b-accent" x="440" y="55" width="120" height="50" rx="6"/>
+            <text class="p7b-accentlabel" x="500" y="76">clip.mp4</text>
+            <text class="p7b-caption" x="500" y="92">pre + post event</text>
+
+            <text class="p7b-title" x="20" y="20">Trigger reaches back into buffer history, not just forward from now</text>
+            <text class="p7b-caption" x="20" y="185" text-anchor="start">Trigger source: analytics rule (local) or cloud command (remote) &mdash; same API either way.</text>
+        </svg>
+    </div>
+    <p>Because the trigger can originate locally or from the cloud, Smart Record is the natural companion to bidirectional messaging: an operator watching a dashboard alert can request the clip on demand, not just review whatever the edge decided to save.</p>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>Bidirectional / cloud-to-edge</h2>
+    <p>nvmsgbroker isn't send-only. The same protocol adapters that publish events can also <strong>subscribe</strong> &mdash; the plugin supports a receive/consume path so a cloud service can push commands down to the device, not just receive telemetry from it.</p>
+    <ul>
+        <li><strong>Start/stop recording</strong> &mdash; trigger Smart Record remotely, e.g. after an operator reviews a low-confidence alert and wants the full clip.</li>
+        <li><strong>Change configuration</strong> &mdash; adjust an ROI, detection threshold or analytics rule without touching the device physically.</li>
+        <li><strong>Acknowledge an alert</strong> &mdash; close the loop so the edge knows a human has seen the event, useful for de-duplicating repeat notifications.</li>
+    </ul>
+    <p>This is the classic <strong>IoT device pattern</strong>: <strong>Azure IoT Hub</strong> models it explicitly with cloud-to-device messages and device twins; <strong>Kafka</strong>-based deployments achieve the same shape with a dedicated command topic the edge process subscribes to alongside its publish topic.</p>
+    <div class="callout">
+        <div class="callout-label">In practice</div>
+        <p>Treat the command channel with the same rigour as any external input &mdash; validate payloads, authenticate the sender, and rate-limit what a single command can trigger. A misconfigured or spoofed "start recording on every camera" command is a denial-of-service against your own storage.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Dynamic streams &amp; the REST API</h2>
+    <p><code>Gst-nvmultiurisrcbin</code> exposes a <strong>REST API</strong> for runtime source management &mdash; the same lever a cloud command channel typically pulls, but usable directly for orchestration tooling too.</p>
+    <ul>
+        <li><strong>Add a stream</strong> &mdash; onboard a new camera by URI without stopping or rebuilding the pipeline.</li>
+        <li><strong>Remove a stream</strong> &mdash; decommission a source cleanly, freeing its batch slot for reuse.</li>
+        <li><strong>Change parameters</strong> &mdash; adjust per-source settings (e.g. ROI, sync behaviour) live.</li>
+    </ul>
+    <div class="diagram-flow">
+        <div class="diagram-box dim">REST client</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">nvmultiurisrcbin API</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box dim">stream added/removed, no restart</div>
+    </div>
+    <p>This is what makes <strong>multi-tenant / elastic</strong> deployments practical: a fleet-management service can provision or retire cameras against a running pipeline as tenants come and go, instead of scheduling a restart window for every sensor change. It's the same building block underneath <strong>NVIDIA Metropolis Microservices</strong> &mdash; the Video Storage Toolkit (VST) and related media/analytics microservices use it to provision sources declaratively in cloud-native deployments.</p>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Edge-to-cloud reference architecture</h2>
+    <p>The full loop: sensors in, insight out, control back down &mdash; with Metropolis Microservices as the cloud-native scaffolding around the DeepStream pipeline itself.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 380" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p7c-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
+                .p7c-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;}
+                .p7c-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p7c-accentlabel{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+                .p7c-caption{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+                .p7c-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+                .p7c-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p7c-arrowhead);}
+                .p7c-arrow-back{stroke:#8b949e;stroke-width:1.5;stroke-dasharray:4 3;fill:none;marker-end:url(#p7c-arrowhead-dim);}
+            </style>
+            <defs>
+                <marker id="p7c-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+                <marker id="p7c-arrowhead-dim" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#8b949e"/>
+                </marker>
+            </defs>
+
+            <text class="p7c-title" x="10" y="20">Edge</text>
+            <rect class="p7c-box" x="10" y="35" width="90" height="34" rx="6"/>
+            <text class="p7c-label" x="55" y="56">cameras</text>
+            <path class="p7c-arrow" d="M100,52 L130,52"/>
+
+            <rect class="p7c-accent" x="130" y="20" width="150" height="80" rx="6"/>
+            <text class="p7c-accentlabel" x="205" y="42">Jetson / dGPU</text>
+            <text class="p7c-accentlabel" x="205" y="58">DeepStream pipeline</text>
+            <text class="p7c-caption" x="205" y="74">infer &middot; track &middot; analytics</text>
+            <text class="p7c-caption" x="205" y="88">Smart Record ring buffer</text>
+
+            <path class="p7c-arrow" d="M280,60 L320,60"/>
+            <rect class="p7c-box" x="320" y="43" width="100" height="34" rx="6"/>
+            <text class="p7c-label" x="370" y="64">nvmsgbroker</text>
+
+            <path class="p7c-arrow" d="M420,60 L460,60"/>
+            <text class="p7c-title" x="465" y="20">Transport</text>
+            <rect class="p7c-box" x="460" y="43" width="120" height="34" rx="6"/>
+            <text class="p7c-label" x="520" y="60">Kafka /</text>
+            <text class="p7c-label" x="520" y="72">Azure IoT Hub</text>
+
+            <path class="p7c-arrow" d="M580,60 L620,60"/>
+
+            <text class="p7c-title" x="600" y="20">Cloud</text>
+            <rect class="p7c-box" x="600" y="43" width="110" height="34" rx="6"/>
+            <text class="p7c-label" x="655" y="60">stream processing</text>
+
+            <path class="p7c-arrow" d="M655,77 L655,110"/>
+            <rect class="p7c-box" x="600" y="110" width="110" height="34" rx="6"/>
+            <text class="p7c-label" x="655" y="131">database</text>
+
+            <path class="p7c-arrow" d="M655,144 L655,177"/>
+            <rect class="p7c-box" x="600" y="177" width="110" height="34" rx="6"/>
+            <text class="p7c-label" x="655" y="194">dashboards</text>
+            <text class="p7c-caption" x="655" y="206">&amp; alerting</text>
+
+            <path class="p7c-arrow-back" d="M655,211 C655,260 300,260 205,120"/>
+            <text class="p7c-caption" x="430" y="252">control channel: start recording, ack alert, reconfigure</text>
+
+            <rect class="p7c-box" x="30" y="140" width="360" height="120" rx="6"/>
+            <text class="p7c-caption" x="210" y="158">NVIDIA Metropolis Microservices (cloud-native building blocks)</text>
+            <rect class="p7c-box" x="50" y="170" width="150" height="34" rx="6"/>
+            <text class="p7c-label" x="125" y="191">Video Storage Toolkit</text>
+            <rect class="p7c-box" x="210" y="170" width="160" height="34" rx="6"/>
+            <text class="p7c-label" x="290" y="185">media management</text>
+            <text class="p7c-caption" x="290" y="197">microservices</text>
+            <rect class="p7c-box" x="50" y="212" width="320" height="34" rx="6"/>
+            <text class="p7c-label" x="210" y="233">analytics microservices &mdash; REST-provisioned sources</text>
+
+            <text class="p7c-caption" x="30" y="275" text-anchor="start">Solid arrows: telemetry up. Dashed arrow: commands and acknowledgements back down.</text>
+        </svg>
+    </div>
+    <p>Nothing here is exotic &mdash; it's the same mux/infer/analytics pipeline from Parts 03&ndash;06, with a publish leg and a subscribe leg bolted on. What changes at scale is orchestration: Metropolis Microservices wrap that single-box pipeline in the provisioning, storage and lifecycle tooling a fleet of them needs.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Takeaways</h2>
+    <ul>
+        <li><strong>Gst-nvmsgconv</strong> serialises <code>NvDsEventMsgMeta</code> into JSON or protobuf, in Full/DeepStream, Minimal or custom schema &mdash; per event, not per frame.</li>
+        <li><strong>Gst-nvmsgbroker</strong> publishes via pluggable protocol adapters &mdash; Kafka, AMQP, MQTT, Azure IoT Hub, Redis &mdash; selected by config, not code change.</li>
+        <li>Events are generated by <strong>application probes</strong>; rate-limit and de-duplicate there, since msgconv/msgbroker will send whatever they're given.</li>
+        <li><strong>Smart Record</strong> keeps a ring buffer per stream and writes trigger-driven mp4 clips with pre-event history &mdash; the standard evidence-clip pattern.</li>
+        <li>Messaging is <strong>bidirectional</strong>: the cloud can push start-recording, reconfigure and acknowledge commands back down to the edge.</li>
+        <li><strong>nvmultiurisrcbin</strong>'s REST API adds/removes streams and tunes parameters live, underpinning elastic, Metropolis-Microservices-based deployments.</li>
+    </ul>
+</section>
+
+<nav class="deck-nav"><a href="part6.html">&larr; Part 06 · Metadata &amp; Analytics</a><a href="index.html">Index</a><a class="next" href="part8.html">Part 08 · Building &amp; Deploying &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

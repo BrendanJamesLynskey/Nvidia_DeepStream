@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 02 &mdash; GStreamer Foundations &amp; Architecture</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream · Part 02</div>
+    <h1>Built on <span class="accent">GStreamer</span></h1>
+    <p class="subtitle">DeepStream is not a video-AI framework unto itself — it's a set of hardware-accelerated GStreamer plugins. Understand the pipeline model and the on-GPU memory convention underneath it, and every DeepStream application starts to look the same.</p>
+    <div class="tags">
+        <span class="tag">Elements &amp; Pads</span>
+        <span class="tag">Caps Negotiation</span>
+        <span class="tag">NVMM</span>
+        <span class="tag">NvBufSurface</span>
+        <span class="tag">NVDEC/NVENC</span>
+        <span class="tag">VIC/DLA</span>
+        <span class="tag">Zero-Copy</span>
+    </div>
+    <div class="pipeline">
+        <span class="pipeline-step">filesrc</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">qtdemux</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">h264parse</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvv4l2decoder</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvstreammux</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvinfer</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvdsosd</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">sink</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Contents</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Why GStreamer</a></li>
+        <li><a href="#slide-02">Core primitives</a></li>
+        <li><a href="#slide-03">A pipeline is a graph</a></li>
+        <li><a href="#slide-04">NVIDIA hardware blocks</a></li>
+        <li><a href="#slide-05">The memory model — NVMM / NvBufSurface</a></li>
+        <li><a href="#slide-06">How DeepStream extends GStreamer</a></li>
+        <li><a href="#slide-07">Threads, queues &amp; latency</a></li>
+        <li><a href="#slide-08">The architecture, assembled</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Why GStreamer</h2>
+    <p><strong>GStreamer</strong> is a mature, cross-platform, pipeline-based multimedia framework: two decades of production use, a plugin ecosystem covering nearly every container, codec, network protocol and rendering sink you'll ever need, and a runtime that already solves the hard, boring problems of dynamic pipeline construction, capability negotiation, multi-threaded scheduling, buffering and clocking.</p>
+    <p>NVIDIA's choice was pragmatic rather than novel: rather than inventing a bespoke media runtime, DeepStream ships as a family of <strong>GStreamer plugins</strong> — <code>nvv4l2decoder</code>, <code>nvstreammux</code>, <code>nvinfer</code>, <code>nvtracker</code>, <code>nvdsosd</code> and friends — that drop into an ordinary GStreamer graph alongside standard open-source elements (<code>qtdemux</code>, <code>rtspsrc</code>, <code>h264parse</code>). You inherit the entire ecosystem for free: file and network demuxing, container parsing, RTSP/RTMP ingest, and a battle-tested threading model.</p>
+    <p>What DeepStream adds on top is narrow but essential: hardware-accelerated elements that keep frame data resident on the GPU, and a shared convention for attaching structured, batched inference metadata to buffers as they flow through the graph. Strip away the AI branding and DeepStream is, architecturally, <strong>accelerated GStreamer elements + a metadata convention</strong>.</p>
+    <div class="callout">
+        <div class="callout-label">Key idea</div>
+        <p>If you already know GStreamer, you already know 80% of DeepStream's plumbing. The remaining 20% — NVMM memory and <code>NvDsBatchMeta</code> — is the subject of the rest of this part.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>Core primitives</h2>
+    <p>Five concepts carry almost all of GStreamer's vocabulary, and DeepStream reuses every one of them unchanged.</p>
+    <ul>
+        <li><strong>Elements</strong> — the unit of processing (a decoder, a filter, a sink). Each element exposes <strong>pads</strong>: a <code>sink</code> pad for data in, a <code>src</code> pad for data out.</li>
+        <li><strong>Linking &amp; caps negotiation</strong> — two elements are linked pad-to-pad; before data flows, they negotiate a shared <strong>capabilities (caps)</strong> structure describing format, resolution, framerate and memory type. Negotiation fails loudly if no compatible caps exist.</li>
+        <li><strong>Bins &amp; the pipeline</strong> — a <strong>bin</strong> groups elements into a reusable sub-graph; the <strong>pipeline</strong> is the top-level bin that owns the clock and drives the bus.</li>
+        <li><strong>GstBuffer</strong> — the unit of media data flowing downstream, one per frame (or chunk), carrying timestamps and, in DeepStream, a pointer into GPU memory rather than raw host pixels.</li>
+        <li><strong>Events &amp; the GstBus</strong> — <strong>events</strong> (EOS, seek, caps changes) travel through the pipeline alongside buffers; <strong>messages</strong> (errors, warnings, state changes, EOS) travel upstream out-of-band via the <strong>GstBus</strong> to the application.</li>
+    </ul>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 220" width="720" height="220" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p2a-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p2a-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
+                .p2a-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p2a-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p2a-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p2a-arrowhead); }
+                .p2a-caps { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
+                .p2a-pad { fill:#0d1117; stroke:#76B900; stroke-width:1.5; }
+            </style>
+            <defs>
+                <marker id="p2a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+            <text x="10" y="24" class="p2a-title">Two linked elements, negotiated caps</text>
+
+            <rect x="60" y="70" width="160" height="70" rx="6" class="p2a-box"/>
+            <text x="140" y="110" class="p2a-label">h264parse</text>
+            <circle cx="220" cy="105" r="6" class="p2a-pad"/>
+            <text x="220" y="150" class="p2a-caption">src</text>
+
+            <line x1="226" y1="105" x2="304" y2="105" class="p2a-arrow"/>
+            <text x="265" y="90" class="p2a-caps">video/x-h264</text>
+
+            <circle cx="310" cy="105" r="6" class="p2a-pad"/>
+            <text x="310" y="150" class="p2a-caption">sink</text>
+            <rect x="310" y="70" width="180" height="70" rx="6" class="p2a-box" style="fill:rgba(118,185,0,0.08);stroke:#76B900;"/>
+            <text x="400" y="100" class="p2a-label" style="fill:#76B900;">nvv4l2decoder</text>
+            <text x="400" y="118" class="p2a-caption">NVDEC hardware decode</text>
+            <circle cx="490" cy="105" r="6" class="p2a-pad"/>
+            <text x="490" y="150" class="p2a-caption">src</text>
+
+            <line x1="496" y1="105" x2="574" y2="105" class="p2a-arrow"/>
+            <text x="535" y="90" class="p2a-caps">memory:NVMM, NV12</text>
+
+            <rect x="580" y="70" width="120" height="70" rx="6" class="p2a-box"/>
+            <text x="640" y="110" class="p2a-label">downstream</text>
+
+            <text x="360" y="190" class="p2a-caption">GstBuffer flows sink&#8594;src through each element; events/GstBus travel alongside, out-of-band</text>
+        </svg>
+    </div>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>A pipeline is a graph</h2>
+    <p>The fastest way to see DeepStream elements behaving as ordinary GStreamer citizens is <code>gst-launch-1.0</code>, the command-line pipeline builder every GStreamer developer already knows:</p>
+    <div class="code-block">
+        <div class="code-header">shell</div>
+        <pre><code>gst-launch-1.0 \
+  filesrc location=input.mp4 ! qtdemux ! h264parse ! nvv4l2decoder ! \
+  mux.sink_0 nvstreammux name=mux batch-size=1 width=1920 height=1080 ! \
+  nvinfer config-file-path=config_infer_primary.txt ! \
+  nvvideoconvert ! nvdsosd ! nveglglessink</code></pre>
+    </div>
+    <p>Read the syntax literally: <code>!</code> is the <strong>link operator</strong> — it connects the <code>src</code> pad of the element on its left to the <code>sink</code> pad of the element on its right, triggering caps negotiation between them. <code>name=mux</code> assigns a handle to an element so later syntax can address it directly; <code>mux.sink_0</code> is <strong>pad syntax</strong> (<code>element_name.pad_name</code>) used to request a specific pad on an element with multiple inputs — here, input stream 0 of the muxer.</p>
+    <p>Notice the graph shape: ordinary open-source elements (<code>filesrc</code>, <code>qtdemux</code>, <code>h264parse</code>) handle file I/O, demuxing and bitstream parsing exactly as they would in any GStreamer application. DeepStream elements (<code>nvv4l2decoder</code>, <code>nvstreammux</code>, <code>nvinfer</code>, <code>nvvideoconvert</code>, <code>nvdsosd</code>) slot in wherever hardware acceleration or inference is needed. Nothing about the framework changes — only which elements you choose to link.</p>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>NVIDIA hardware blocks</h2>
+    <p>A discrete GPU or Jetson SoC exposes several fixed-function and programmable blocks alongside the CUDA cores. DeepStream's job is to expose each one through a plugin, so your pipeline's element choice is really a choice of silicon.</p>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Hardware block</th><th>Does</th><th>DeepStream element(s)</th></tr>
+            </thead>
+            <tbody>
+                <tr><td>NVDEC</td><td>Fixed-function video decode (H.264, H.265/HEVC, AV1, VP9)</td><td><code>nvv4l2decoder</code></td></tr>
+                <tr><td>NVENC</td><td>Fixed-function video encode</td><td><code>nvv4l2h264enc</code>, <code>nvv4l2h265enc</code></td></tr>
+                <tr><td>GPU + CUDA</td><td>Inference, batched format conversion/scaling, tiling, tracking compute</td><td><code>nvinfer</code>, <code>nvinferserver</code>, <code>nvvideoconvert</code>, <code>nvmultistreamtiler</code>, <code>nvtracker</code></td></tr>
+                <tr><td>VIC <span class="badge">Jetson</span></td><td>Fixed-function scale, colour-space conversion, composite — offloads these from the GPU</td><td><code>nvvideoconvert</code> (VIC path on Jetson)</td></tr>
+                <tr><td>DLA <span class="badge">Jetson</span></td><td>Deep-learning accelerator; runs INT8/FP16 TensorRT engines in parallel with the GPU</td><td><code>nvinfer</code> with <code>enable-dla=1</code></td></tr>
+                <tr><td>ISP</td><td>Camera image signal processing (Bayer&#8594;YUV, AE/AWB)</td><td><code>nvarguscamerasrc</code></td></tr>
+            </tbody>
+        </table>
+    </div>
+    <p>On Jetson especially, this mapping matters for throughput: routing scale/convert work through the <strong>VIC</strong> instead of the GPU frees CUDA cores entirely for inference, and offloading a secondary classifier to the <strong>DLA</strong> lets it run concurrently with a primary detector on the GPU rather than time-sharing the same compute.</p>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>The memory model — NVMM / NvBufSurface</h2>
+    <p>This is the single most important architectural fact in DeepStream. Decoded frames are not delivered as host-memory pixel buffers that each plugin copies, transforms and copies back — they live in <strong>NVMM</strong> ("NVIDIA memory"), a GPU-resident (or Jetson unified-memory) surface described by an <code>NvBufSurface</code> structure. GstBuffers carry the caps feature <code>memory:NVMM</code> to advertise this, and downstream elements negotiate for it explicitly.</p>
+    <p>Because every DeepStream plugin understands <code>NvBufSurface</code>, what actually crosses a pad boundary is a <strong>pointer and metadata describing the surface</strong> — never the pixels themselves. Decode, inference, tracking, on-screen-drawing and encode all operate on the same underlying GPU allocation. This is <strong>zero-copy</strong>: no host&#8596;device transfer, no per-stage <code>memcpy</code>, for the entire lifetime of a frame in the pipeline.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 260" width="720" height="260" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p2b-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p2b-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p2b-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
+                .p2b-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
+                .p2b-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p2b-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p2b-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p2b-arrowhead); }
+                .p2b-badarrow { stroke:#ff7b72; stroke-width:1.5; fill:none; marker-end:url(#p2b-badarrowhead); stroke-dasharray:3,3; }
+            </style>
+            <defs>
+                <marker id="p2b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+                <marker id="p2b-badarrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#ff7b72"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="20" class="p2b-title">DeepStream: NVMM zero-copy</text>
+            <rect x="20" y="35" width="680" height="70" rx="6" class="p2b-accent"/>
+            <text x="90" y="65" class="p2b-accentlabel">decode</text>
+            <text x="90" y="82" class="p2b-caption">NVDEC</text>
+            <line x1="150" y1="70" x2="200" y2="70" class="p2b-arrow"/>
+            <text x="255" y="65" class="p2b-accentlabel">infer</text>
+            <text x="255" y="82" class="p2b-caption">GPU/DLA</text>
+            <line x1="310" y1="70" x2="360" y2="70" class="p2b-arrow"/>
+            <text x="415" y="65" class="p2b-accentlabel">osd</text>
+            <text x="415" y="82" class="p2b-caption">GPU</text>
+            <line x1="470" y1="70" x2="520" y2="70" class="p2b-arrow"/>
+            <text x="580" y="65" class="p2b-accentlabel">encode</text>
+            <text x="580" y="82" class="p2b-caption">NVENC</text>
+            <text x="360" y="120" class="p2b-caption">one NvBufSurface allocation &#8212; pointers only cross pad boundaries</text>
+
+            <text x="10" y="160" class="p2b-title">Naive CPU pipeline: host&#8596;device copies</text>
+            <rect x="20" y="175" width="150" height="55" rx="6" class="p2b-box"/>
+            <text x="95" y="207" class="p2b-label">decode (GPU)</text>
+            <line x1="170" y1="202" x2="215" y2="202" class="p2b-badarrow"/>
+            <text x="192" y="195" class="p2b-caption" style="fill:#ff7b72;">copy</text>
+            <rect x="220" y="175" width="150" height="55" rx="6" class="p2b-box"/>
+            <text x="295" y="207" class="p2b-label">infer (host&#8594;GPU)</text>
+            <line x1="370" y1="202" x2="415" y2="202" class="p2b-badarrow"/>
+            <text x="392" y="195" class="p2b-caption" style="fill:#ff7b72;">copy</text>
+            <rect x="420" y="175" width="150" height="55" rx="6" class="p2b-box"/>
+            <text x="495" y="207" class="p2b-label">draw (host)</text>
+            <line x1="570" y1="202" x2="600" y2="202" class="p2b-badarrow"/>
+            <rect x="605" y="175" width="95" height="55" rx="6" class="p2b-box"/>
+            <text x="652" y="207" class="p2b-label">encode</text>
+        </svg>
+    </div>
+    <p>Batched, GPU-side scale/convert/composite operations on these surfaces — resizing to an inference network's input dimensions, colour-space conversion, cropping a batch of detected objects — go through <code>NvBufSurfaceTransform</code> (and its DeepStream wrapper, <code>nvvideoconvert</code>), which operates on N surfaces in one call rather than one frame at a time.</p>
+    <div class="callout">
+        <div class="callout-label">Key idea</div>
+        <p>Any time a pipeline mixes DeepStream elements with a plugin that only understands system memory, GStreamer inserts an implicit copy to satisfy caps negotiation — silently reintroducing the cost NVMM exists to avoid. Watch your pipeline graph for unexpected <code>videoconvert</code> (no <code>nv</code> prefix) elements.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>How DeepStream extends GStreamer</h2>
+    <p>NVMM solves where the <em>pixels</em> live. DeepStream's second contribution solves where the <em>inference results</em> live: a parallel, structured metadata channel that rides alongside each GstBuffer without polluting the buffer itself.</p>
+    <div class="diagram-grid cols-2">
+        <div class="diagram-panel accent-border">
+            <h4>NvDsBatchMeta</h4>
+            <p>A metadata tree attached to each batched buffer: one <code>NvDsFrameMeta</code> per source frame in the batch, each holding a list of <code>NvDsObjectMeta</code> (detections), which in turn can carry classifier results, tracker IDs and arbitrary <code>NvDsUserMeta</code>. Plugins read and append to this tree in place.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Batching at nvstreammux</h4>
+            <p><code>nvstreammux</code> collects frames from N input streams into a single batched buffer of a fixed <code>batch-size</code>. Every downstream element — <code>nvinfer</code>, <code>nvtracker</code> — then processes the whole batch in one call, amortising kernel-launch and inference overhead across streams instead of paying it per-stream.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Tiler / demuxer fan-out</h4>
+            <p>At the end of the graph, <code>nvmultistreamtiler</code> composites the batch into a single tiled preview surface for display, or <code>nvstreamdemux</code> splits the batch back into N independent per-stream buffers — e.g. for per-camera recording or RTSP re-streaming.</p>
+        </div>
+        <div class="diagram-panel accent-border">
+            <h4>Probes</h4>
+            <p>A <strong>probe</strong> is a callback attached to a pad that fires on every buffer passing through it. Application code reads or edits <code>NvDsBatchMeta</code> from a probe — adding custom analytics, filtering detections, drawing overlays — without writing a custom GStreamer plugin at all. This is the primary integration point for DeepStream application logic.</p>
+        </div>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Threads, queues &amp; latency</h2>
+    <p>GStreamer pipelines don't run as one thread by default — each element pushes and pulls on whatever thread it's scheduled on, and explicit <code>queue</code> elements are how you decouple stages onto independent threads, buffering between them so a slow downstream element doesn't stall a fast upstream one (or vice versa).</p>
+    <ul>
+        <li><strong>Pipeline latency</strong> is the sum of every element's processing and buffering delay; DeepStream applications query it via the <code>GST_QUERY_LATENCY</code> mechanism, same as any GStreamer app.</li>
+        <li><strong><code>nvstreammux</code> batch size</strong> trades latency for throughput: a larger <code>batch-size</code> improves GPU utilisation per inference call but means waiting for more frames to arrive before the batch is dispatched.</li>
+        <li><strong><code>batched-push-timeout</code></strong> bounds that wait — the muxer pushes whatever it has once the timeout (microseconds) elapses, so one slow or dead source doesn't stall the whole batch indefinitely.</li>
+        <li><strong>Live sources</strong> (RTSP, cameras) run the pipeline in "live" mode: the pipeline clock governs playback and late buffers are dropped rather than causing the whole graph to fall behind.</li>
+        <li><strong>Sink synchronisation</strong> — <code>sync=0</code> on a sink (e.g. <code>fakesink</code>, file sinks) processes buffers as fast as the pipeline can produce them, useful for benchmarking or offline batch jobs; <code>sync=1</code> (the default for display sinks) paces output to the clock for real-time playback.</li>
+    </ul>
+    <div class="callout">
+        <div class="callout-label">Key idea</div>
+        <p>Batch size and queue depth are the two knobs you'll tune most in production: too small and you leave GPU throughput on the table, too large and you add latency a real-time analytics pipeline can't afford.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>The architecture, assembled</h2>
+    <p>Put the hardware mapping and the metadata model together and the canonical DeepStream pipeline reads as two parallel tracks: pixels moving through NVMM on one, structured meaning accumulating in <code>NvDsBatchMeta</code> on the other — both riding the same GstBuffer downstream.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 340" width="720" height="340" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p2c-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p2c-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p2c-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-anchor:middle; }
+                .p2c-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-anchor:middle; }
+                .p2c-caption { fill:#8b949e; font-size:9px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p2c-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p2c-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p2c-arrowhead); }
+                .p2c-meta { fill:#8b949e; font-family:'JetBrains Mono',monospace; font-size:9px; text-anchor:middle; }
+            </style>
+            <defs>
+                <marker id="p2c-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="18" class="p2c-title">Buffers carry pixels; metadata carries meaning</text>
+
+            <!-- row of boxes -->
+            <rect x="10" y="35" width="88" height="55" rx="6" class="p2c-accent"/>
+            <text x="54" y="58" class="p2c-accentlabel">decode</text>
+            <text x="54" y="73" class="p2c-caption">NVDEC</text>
+
+            <line x1="98" y1="62" x2="122" y2="62" class="p2c-arrow"/>
+
+            <rect x="124" y="35" width="98" height="55" rx="6" class="p2c-accent"/>
+            <text x="173" y="52" class="p2c-accentlabel">mux</text>
+            <text x="173" y="66" class="p2c-caption">nvstreammux</text>
+            <text x="173" y="78" class="p2c-caption">batch + init BatchMeta</text>
+
+            <line x1="222" y1="62" x2="246" y2="62" class="p2c-arrow"/>
+
+            <rect x="248" y="35" width="88" height="55" rx="6" class="p2c-accent"/>
+            <text x="292" y="52" class="p2c-accentlabel">PGIE</text>
+            <text x="292" y="66" class="p2c-caption">nvinfer</text>
+            <text x="292" y="78" class="p2c-caption">GPU/DLA</text>
+
+            <line x1="336" y1="62" x2="360" y2="62" class="p2c-arrow"/>
+
+            <rect x="362" y="35" width="88" height="55" rx="6" class="p2c-accent"/>
+            <text x="406" y="52" class="p2c-accentlabel">tracker</text>
+            <text x="406" y="66" class="p2c-caption">nvtracker</text>
+            <text x="406" y="78" class="p2c-caption">GPU</text>
+
+            <line x1="450" y1="62" x2="474" y2="62" class="p2c-arrow"/>
+
+            <rect x="476" y="35" width="80" height="55" rx="6" class="p2c-accent"/>
+            <text x="516" y="52" class="p2c-accentlabel">SGIE</text>
+            <text x="516" y="66" class="p2c-caption">nvinfer</text>
+            <text x="516" y="78" class="p2c-caption">classifier</text>
+
+            <line x1="556" y1="62" x2="580" y2="62" class="p2c-arrow"/>
+
+            <rect x="582" y="35" width="128" height="55" rx="6" class="p2c-accent"/>
+            <text x="646" y="52" class="p2c-accentlabel">analytics</text>
+            <text x="646" y="66" class="p2c-caption">nvdsanalytics</text>
+            <text x="646" y="78" class="p2c-caption">user meta</text>
+
+            <!-- second row -->
+            <line x1="646" y1="90" x2="646" y2="115" class="p2c-arrow"/>
+            <rect x="582" y="118" width="128" height="55" rx="6" class="p2c-accent"/>
+            <text x="646" y="140" class="p2c-accentlabel">tiler / osd</text>
+            <text x="646" y="155" class="p2c-caption">nvmultistreamtiler</text>
+            <text x="646" y="167" class="p2c-caption">nvdsosd draws meta</text>
+
+            <line x1="582" y1="145" x2="366" y2="145" class="p2c-arrow"/>
+            <rect x="248" y="118" width="118" height="55" rx="6" class="p2c-accent"/>
+            <text x="307" y="140" class="p2c-accentlabel">encode / sink</text>
+            <text x="307" y="155" class="p2c-caption">nvv4l2h264enc</text>
+            <text x="307" y="167" class="p2c-caption">NVENC</text>
+
+            <!-- metadata row -->
+            <text x="10" y="205" class="p2c-title" style="font-size:11px;">NvDsBatchMeta grows alongside the buffer</text>
+            <rect x="10" y="215" width="270" height="30" rx="4" class="p2c-box"/>
+            <text x="145" y="234" class="p2c-meta">FrameMeta[] &#8592; empty at mux</text>
+            <line x1="280" y1="230" x2="300" y2="230" class="p2c-arrow"/>
+            <rect x="302" y="215" width="176" height="30" rx="4" class="p2c-box"/>
+            <text x="390" y="234" class="p2c-meta">+ObjectMeta (bbox, class)</text>
+            <line x1="478" y1="230" x2="498" y2="230" class="p2c-arrow"/>
+            <rect x="500" y="215" width="84" height="30" rx="4" class="p2c-box"/>
+            <text x="542" y="234" class="p2c-meta">+object_id</text>
+            <line x1="584" y1="230" x2="604" y2="230" class="p2c-arrow"/>
+            <rect x="606" y="215" width="104" height="30" rx="4" class="p2c-box"/>
+            <text x="658" y="234" class="p2c-meta">+ClassifierMeta</text>
+
+            <line x1="665" y1="245" x2="665" y2="260" class="p2c-arrow"/>
+            <rect x="530" y="263" width="180" height="30" rx="4" class="p2c-box"/>
+            <text x="620" y="282" class="p2c-meta">+UserMeta (analytics) &#8594; read by probe</text>
+
+            <text x="360" y="320" class="p2c-caption">dashed conceptual link: metadata tree travels with the batch object referenced by each GstBuffer</text>
+        </svg>
+    </div>
+    <div class="callout">
+        <div class="callout-label">Key idea</div>
+        <p>Buffers carry pixels, resident on the GPU, moved by pointer. Metadata carries meaning, built up incrementally by each plugin as the batch passes through. Master this split and the rest of the DeepStream SDK — every plugin in Part 03 onward — is just detail on top of it.</p>
+    </div>
+</section>
+
+<nav class="deck-nav"><a href="part1.html">&larr; Part 01 · The Big Picture</a><a href="index.html">Index</a><a class="next" href="part3.html">Part 03 · The Plugin Toolbox &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>

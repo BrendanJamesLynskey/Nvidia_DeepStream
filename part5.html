@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DeepStream 05 &mdash; Multi-Object Tracking</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-card: #0d1117;
+            --bg-code: #161b22;
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --accent: #76B900;
+            --accent-dim: #76B90044;
+            --accent-glow: #76B90033;
+            --border: #21262d;
+            --font-display: 'Space Grotesk', sans-serif;
+            --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+            --font-body: 'Inter', sans-serif;
+            --max-width: 900px;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html { scroll-behavior: smooth; }
+        body {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: var(--font-body);
+            font-size: 17px;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem 1.5rem;
+            text-align: center;
+            position: relative;
+        }
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 600px;
+            background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        .hero > * { position: relative; z-index: 1; }
+        .series-label {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            letter-spacing: 0.15em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+        .hero h1 {
+            font-family: var(--font-display);
+            font-size: clamp(2rem, 5vw, 3.2rem);
+            font-weight: 700;
+            color: var(--text-primary);
+            line-height: 1.2;
+            margin-bottom: 1rem;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-secondary);
+            max-width: 640px;
+            margin-bottom: 2rem;
+        }
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: center;
+            margin-bottom: 2.5rem;
+        }
+        .tag {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999px;
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            background: var(--accent-dim);
+            white-space: nowrap;
+        }
+        .pipeline {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.25rem;
+            margin-bottom: 1rem;
+            max-width: var(--max-width);
+        }
+        .pipeline-step {
+            font-family: var(--font-mono);
+            font-size: 0.7rem;
+            padding: 0.3rem 0.7rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+        .pipeline-arrow { color: var(--accent); font-size: 0.9rem; font-weight: 700; }
+        .slide {
+            min-height: 100vh;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 4rem 1.5rem;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .slide-number {
+            font-family: var(--font-display);
+            font-size: 5rem;
+            font-weight: 700;
+            color: var(--accent-dim);
+            position: absolute;
+            top: 2rem;
+            right: 1.5rem;
+            line-height: 1;
+            user-select: none;
+        }
+        .slide h2 {
+            font-family: var(--font-display);
+            font-size: 1.9rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            line-height: 1.25;
+        }
+        .slide h3 {
+            font-family: var(--font-display);
+            font-size: 1.3rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+        }
+        .slide p { margin-bottom: 1rem; color: var(--text-secondary); }
+        .slide p strong { color: var(--text-primary); }
+        .slide ul, .slide ol { margin-bottom: 1rem; padding-left: 1.5rem; color: var(--text-secondary); }
+        .slide li { margin-bottom: 0.4rem; }
+        .slide li strong { color: var(--text-primary); }
+        .slide code {
+            font-family: var(--font-mono);
+            font-size: 0.88em;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            padding: 0.05rem 0.35rem;
+            border-radius: 3px;
+            color: #c9d1d9;
+        }
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin: 1.25rem 0;
+            overflow: hidden;
+        }
+        .code-header {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            background: rgba(118, 185, 0, 0.08);
+            padding: 0.4rem 1rem;
+            border-bottom: 1px solid var(--border);
+        }
+        .code-block pre { margin: 0; padding: 1rem; overflow-x: auto; }
+        .code-block code {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            line-height: 1.6;
+            color: #c9d1d9;
+            background: transparent;
+            border: none;
+            padding: 0;
+        }
+        .kw { color: #ff7b72; }
+        .fn { color: #d2a8ff; }
+        .str { color: #a5d6ff; }
+        .cm { color: #8b949e; font-style: italic; }
+        .num { color: #79c0ff; }
+        .type { color: #ffa657; }
+        .dir { color: #ff7b72; }
+        .mac { color: #ffa657; }
+        .table-wrap {
+            overflow-x: auto;
+            margin: 1.25rem 0;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+        th {
+            background: var(--bg-code);
+            color: var(--accent);
+            font-weight: 600;
+            text-align: left;
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid var(--border);
+            font-family: var(--font-display);
+            white-space: nowrap;
+        }
+        td {
+            padding: 0.6rem 1rem;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        .diagram-flow {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-box {
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            padding: 0.5rem 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            text-align: center;
+            white-space: nowrap;
+        }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
+        .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
+        .diagram-vertical {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.3rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-vertical .diagram-arrow { font-size: 1.1rem; }
+        .hierarchy {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .hierarchy-level { display: flex; align-items: center; gap: 0.75rem; }
+        .hierarchy-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            min-width: 80px;
+            text-align: right;
+        }
+        .hierarchy-items { display: flex; flex-wrap: wrap; gap: 0.35rem; }
+        .hierarchy-item {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-grid {
+            display: grid;
+            gap: 0.75rem;
+            margin: 1.5rem 0;
+            padding: 1.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        .diagram-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+        .diagram-grid.cols-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .diagram-panel {
+            padding: 1rem;
+            background: var(--bg-code);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        .diagram-panel.accent-border { border-left: 3px solid var(--accent); }
+        .diagram-panel h4 {
+            font-family: var(--font-display);
+            font-size: 1rem;
+            color: var(--accent);
+            margin-bottom: 0.5rem;
+        }
+        .diagram-panel p, .diagram-panel ul { font-size: 0.85rem; }
+        .callout {
+            background: var(--bg-card);
+            border-left: 3px solid var(--accent);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1.25rem 0;
+        }
+        .callout p { margin-bottom: 0; }
+        .callout p + p { margin-top: 0.5rem; }
+        .callout .callout-label {
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.3rem;
+        }
+        .contents-list { list-style: none; padding-left: 0; counter-reset: contents; }
+        .contents-list li {
+            counter-increment: contents;
+            padding: 0.6rem 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .contents-list li:last-child { border-bottom: none; }
+        .contents-list li::before {
+            content: counter(contents, decimal-leading-zero);
+            font-family: var(--font-mono);
+            font-size: 0.85rem;
+            color: var(--accent);
+            min-width: 2rem;
+        }
+        .contents-list a { color: var(--text-primary); text-decoration: none; transition: color 0.2s; }
+        .contents-list a:hover { color: var(--accent); }
+        .footer {
+            text-align: center;
+            padding: 3rem 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            border-top: 1px solid var(--border);
+            max-width: var(--max-width);
+            margin: 0 auto;
+        }
+        .footer a { color: var(--accent); text-decoration: none; }
+        .footer a:hover { text-decoration: underline; }
+        .deck-nav {
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            max-width: var(--max-width);
+            margin: 0 auto;
+            padding: 2rem 1.5rem 0;
+            flex-wrap: wrap;
+        }
+        .deck-nav a {
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            padding: 0.5rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            transition: border-color 0.15s, color 0.15s;
+        }
+        .deck-nav a:hover { border-color: var(--accent); color: var(--accent); }
+        .deck-nav a.next { margin-left: auto; }
+        .canvas-wrap {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1.25rem 0;
+            overflow-x: auto;
+        }
+        .canvas-wrap canvas, .canvas-wrap svg { display: block; margin: 0 auto; max-width: 100%; }
+        .badge {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.65rem;
+            padding: 0.1rem 0.45rem;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: middle;
+            margin-left: 0.3rem;
+        }
+        .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
+        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        @media (max-width: 640px) {
+            .slide { padding: 3rem 1rem; min-height: auto; }
+            .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
+            .slide h2 { font-size: 1.5rem; }
+            .diagram-grid.cols-2, .diagram-grid.cols-3 { grid-template-columns: 1fr; }
+            .pipeline { gap: 0.15rem; }
+            .pipeline-step { font-size: 0.6rem; padding: 0.2rem 0.4rem; }
+            .hero h1 { font-size: 1.8rem; }
+            table { font-size: 0.78rem; }
+        }
+    </style>
+</head>
+<body>
+<header class="hero">
+    <div class="series-label">NVIDIA DeepStream · Part 05</div>
+    <h1>Persistent <span class="accent">Identity</span> Across Frames</h1>
+    <p class="subtitle">Detection is per-frame — every inference pass rediscovers the world from scratch, with no memory of what it saw a moment ago. A tracker closes that gap: it assigns a stable <code>object_id</code> across time, so you can count, measure dwell, draw trajectories, and run the detector less often while the tracker fills in the rest.</p>
+    <div class="tags">
+        <span class="tag">NvMultiObjectTracker</span>
+        <span class="tag">IOU</span>
+        <span class="tag">NvSORT</span>
+        <span class="tag">NvDCF</span>
+        <span class="tag">NvDeepSORT</span>
+        <span class="tag">Re-ID</span>
+        <span class="tag">SV3DT</span>
+    </div>
+    <div class="pipeline">
+        <span class="pipeline-step">nvstreammux</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvinfer (PGIE)</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvtracker</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvinfer (SGIE)</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvdsanalytics</span><span class="pipeline-arrow">&rarr;</span>
+        <span class="pipeline-step">nvdsosd</span>
+    </div>
+</header>
+
+<section class="slide" id="slide-00">
+    <div class="slide-number">00</div>
+    <h2>Contents</h2>
+    <ul class="contents-list">
+        <li><a href="#slide-01">Why track at all</a></li>
+        <li><a href="#slide-02">The composable architecture</a></li>
+        <li><a href="#slide-03">Four algorithms, and a preview</a></li>
+        <li><a href="#slide-04">IOU &amp; NvSORT — the lightweight tier</a></li>
+        <li><a href="#slide-05">NvDCF — visual tracking</a></li>
+        <li><a href="#slide-06">NvDeepSORT &amp; Re-ID</a></li>
+        <li><a href="#slide-07">Configuring the low-level library</a></li>
+        <li><a href="#slide-08">Single-View 3D Tracking</a></li>
+        <li><a href="#slide-09">Choosing a tracker</a></li>
+    </ul>
+</section>
+
+<section class="slide" id="slide-01">
+    <div class="slide-number">01</div>
+    <h2>Why track at all</h2>
+    <p>A detector answers one question, independently, on every frame: <em>what objects are here, and where?</em> It has no concept of continuity — the bounding box it draws around a car in frame N has no formal relationship to the box it draws around what is visually the same car in frame N+1. Two consecutive detections of the same object are, to the detector, two unrelated facts.</p>
+    <p><code>Gst-nvtracker</code> sits immediately after the primary detector and turns that sequence of unrelated facts into <strong>trajectories</strong>: it associates each new detection with an existing target (or starts a new one), and stamps every associated object with a persistent <strong>object_id</strong> that survives frame to frame. That single ID is what makes higher-level analytics possible at all — line-crossing counts, dwell-time histograms, direction-of-travel, speed estimation, unique-visitor counting — none of which mean anything against a stream of anonymous, per-frame boxes.</p>
+    <p>Tracking also buys throughput. Because the tracker maintains its own motion/appearance model between detections, the primary detector doesn't need to run every frame — <code>nvinfer</code>'s <code>interval</code> property can skip frames entirely, with the tracker predicting object positions across the gap. On a GPU-constrained pipeline with many streams, this is often the single biggest lever for headroom.</p>
+    <div class="callout">
+        <div class="callout-label">Where it sits</div>
+        <p><code>Gst-nvtracker</code> goes directly after the primary <code>nvinfer</code> (PGIE) and before any secondary classifiers (SGIE) or analytics elements — SGIEs typically classify per-object crops, and analytics needs the <code>object_id</code> to attribute events to a specific target over time.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-02">
+    <div class="slide-number">02</div>
+    <h2>The composable architecture</h2>
+    <p><code>Gst-nvtracker</code> is a thin GStreamer wrapper around the low-level <strong>NvMultiObjectTracker</strong> reference library. Crucially, that library is not four separate trackers bolted together — it's a set of shared modules, and each named algorithm (IOU, NvSORT, NvDCF, NvDeepSORT) is really just a particular selection and configuration of the same modules. Understand the module pipeline once and every algorithm is a variation on it.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 300" width="720" height="300" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p5a-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p5a-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p5a-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
+                .p5a-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
+                .p5a-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p5a-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p5a-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p5a-arrowhead); }
+                .p5a-dash { stroke:#ffa657; stroke-width:1.5; stroke-dasharray:4 3; fill:none; marker-end:url(#p5a-dasharrowhead); }
+            </style>
+            <defs>
+                <marker id="p5a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+                <marker id="p5a-dasharrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#ffa657"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="20" class="p5a-title">NvMultiObjectTracker — shared module pipeline</text>
+
+            <rect x="10" y="40" width="110" height="55" rx="6" class="p5a-box"/>
+            <text x="65" y="62" class="p5a-label">detections</text>
+            <text x="65" y="78" class="p5a-caption">from PGIE, per frame</text>
+
+            <line x1="120" y1="67" x2="150" y2="67" class="p5a-arrow"/>
+
+            <rect x="152" y="40" width="150" height="55" rx="6" class="p5a-accent"/>
+            <text x="227" y="62" class="p5a-accentlabel">data association</text>
+            <text x="227" y="78" class="p5a-caption">match to existing targets</text>
+
+            <line x1="302" y1="67" x2="332" y2="67" class="p5a-arrow"/>
+
+            <rect x="334" y="40" width="150" height="55" rx="6" class="p5a-accent"/>
+            <text x="409" y="62" class="p5a-accentlabel">state estimation</text>
+            <text x="409" y="78" class="p5a-caption">Kalman predict / update</text>
+
+            <line x1="484" y1="67" x2="514" y2="67" class="p5a-arrow"/>
+
+            <rect x="516" y="40" width="150" height="55" rx="6" class="p5a-accent"/>
+            <text x="591" y="62" class="p5a-accentlabel">target management</text>
+            <text x="591" y="78" class="p5a-caption">birth / death / shadow</text>
+
+            <line x1="591" y1="95" x2="591" y2="125" class="p5a-arrow"/>
+            <rect x="516" y="128" width="150" height="45" rx="6" class="p5a-box"/>
+            <text x="591" y="153" class="p5a-label">object_id + bbox out</text>
+
+            <text x="409" y="115" class="p5a-caption">optional, feeds back into association &amp; state:</text>
+            <rect x="334" y="128" width="150" height="55" rx="6" class="p5a-box" style="stroke:#ffa657;"/>
+            <text x="409" y="150" class="p5a-label" style="fill:#ffa657;">Re-ID / appearance</text>
+            <text x="409" y="167" class="p5a-caption">feature embedding + gallery</text>
+            <line x1="409" y1="128" x2="360" y2="95" class="p5a-dash"/>
+            <line x1="484" y1="155" x2="516" y2="155" class="p5a-dash"/>
+
+            <text x="10" y="215" class="p5a-title" style="font-size:11px;">Every named algorithm is a choice of which modules run</text>
+            <rect x="10" y="228" width="165" height="45" rx="4" class="p5a-box"/>
+            <text x="92" y="248" class="p5a-caption">IOU: association only</text>
+            <text x="92" y="262" class="p5a-caption">(overlap-based, no Kalman)</text>
+            <rect x="185" y="228" width="165" height="45" rx="4" class="p5a-box"/>
+            <text x="267" y="248" class="p5a-caption">NvSORT: association +</text>
+            <text x="267" y="262" class="p5a-caption">Kalman state estimator</text>
+            <rect x="360" y="228" width="165" height="45" rx="4" class="p5a-box"/>
+            <text x="442" y="248" class="p5a-caption">NvDCF: + correlation-filter</text>
+            <text x="442" y="262" class="p5a-caption">appearance module</text>
+            <rect x="535" y="228" width="175" height="45" rx="4" class="p5a-box"/>
+            <text x="622" y="248" class="p5a-caption">NvDeepSORT: + Re-ID</text>
+            <text x="622" y="262" class="p5a-caption">network &amp; gallery</text>
+        </svg>
+    </div>
+    <p>Because the modules are shared, config groups (<code>DataAssociator</code>, <code>StateEstimator</code>, <code>TargetManagement</code>, <code>ReID</code>) are consistent across algorithms in the low-level YAML — moving from NvSORT to NvDCF or NvDeepSORT is largely a matter of enabling extra modules and tuning their parameters, not learning a new configuration language.</p>
+</section>
+
+<section class="slide" id="slide-03">
+    <div class="slide-number">03</div>
+    <h2>Four algorithms, and a preview</h2>
+    <p>The library ships four production algorithms plus a developer-preview fifth, ordered roughly by increasing robustness and compute cost.</p>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Algorithm</th><th>Mechanism</th><th>Uses appearance?</th><th>Robust to missed detections?</th><th>Relative compute</th><th>Choose when</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><strong>IOU</strong></td><td>Bounding-box Intersection-over-Union between consecutive frames</td><td>No</td><td>No — breaks on any gap</td><td>Minimal</td><td>Baseline, high frame-rate, dense detections every frame</td></tr>
+                <tr><td><strong>NvSORT</strong></td><td>Cascaded proximity association + Kalman motion filtering</td><td>No</td><td>Limited (motion prediction only)</td><td>Low</td><td>Efficient default when appearance isn't needed</td></tr>
+                <tr><td><strong>NvDCF</strong></td><td>Discriminative correlation filter learns per-target appearance</td><td>Yes (correlation)</td><td>Yes — tracks through misses/occlusion</td><td>Medium</td><td>Crowded scenes, intermittent detections</td></tr>
+                <tr><td><strong>NvDeepSORT</strong></td><td>Deep cosine metric learning via a Re-ID network + gallery</td><td>Yes (learned embedding)</td><td>Yes, plus long-gap re-association</td><td>High</td><td>Must re-identify IDs after long occlusion or across cameras</td></tr>
+                <tr><td><strong>MaskTracker</strong> <span class="badge warn">preview</span></td><td>Tracking + segmentation using SAM2-class vision foundation models</td><td>Yes (learned)</td><td>Yes</td><td>Highest</td><td>Pixel-accurate masks are the deliverable, not just boxes</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="slide" id="slide-04">
+    <div class="slide-number">04</div>
+    <h2>IOU &amp; NvSORT — the lightweight tier</h2>
+    <p><strong>IOU</strong> is the simplest association rule the library offers: for each existing target, find the incoming detection whose bounding box overlaps it most (by Intersection-over-Union), and assign the match if the overlap clears a threshold. No history, no motion model, no pixels touched — just geometry compared frame-to-frame. It's essentially free, and it works well when the detector runs at full frame-rate on well-separated objects, but it has no way to bridge a missed detection or a fast-moving target whose box has moved past its previous position.</p>
+    <p><strong>NvSORT</strong> — NVIDIA's enhanced take on SORT — adds the two things IOU lacks: a <strong>Kalman filter</strong> predicts each target's next position from its motion history, and a <strong>cascaded</strong> data-association strategy matches detections to targets by proximity to that prediction rather than to last frame's raw box. It still touches no pixel data — everything is geometry and motion — which keeps it cheap, but the motion model lets it survive brief, predictable gaps that would break IOU outright.</p>
+    <div class="diagram-flow">
+        <div class="diagram-box dim">detections</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">Kalman predict</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">cascaded proximity match</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box accent">Kalman update</div>
+        <div class="diagram-arrow">&rarr;</div>
+        <div class="diagram-box dim">object_id out</div>
+    </div>
+    <div class="callout">
+        <div class="callout-label">When to use it</div>
+        <p>NvSORT is the sensible default for most pipelines: no appearance modelling means no extra GPU work beyond the Kalman math, and it's markedly more robust than raw IOU for the same cost tier.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-05">
+    <div class="slide-number">05</div>
+    <h2>NvDCF — visual tracking</h2>
+    <p>IOU and NvSORT reason only about geometry — if the detector misses a frame, they have nothing to fall back on but a motion guess, and a bad guess loses the track. <strong>NvDCF</strong> (NVIDIA Discriminative Correlation Filter) closes that gap by learning what each target <em>looks like</em>: a correlation filter is trained online, per target, on the pixel patch inside its bounding box, and updated as the target evolves across frames.</p>
+    <p>On each new frame, NvDCF doesn't just wait for a detection to match — it runs its learned filter over the search region and produces a <strong>correlation response</strong> indicating where that target's appearance is most strongly present, independent of whether the detector fired. Association then combines that visual evidence with bounding-box proximity, so the tracker can carry a target through several frames of missed detections or partial occlusion, then reconcile with the detector's output once it reappears.</p>
+    <ul>
+        <li><strong>Appearance learning:</strong> the filter adapts online per target — no offline training, no external network to load.</li>
+        <li><strong>Occlusion resilience:</strong> because the filter can propose a position without a detection, NvDCF is markedly better than NvSORT in crowded scenes with frequent inter-object occlusion.</li>
+        <li><strong>Cost:</strong> correlation filtering touches pixel data every frame per target — real GPU work, well above NvSORT's pure-geometry cost, though still lighter than a full Re-ID network.</li>
+    </ul>
+    <div class="callout">
+        <div class="callout-label">The trade-off</div>
+        <p>NvDCF buys robustness through per-target appearance modelling at real compute cost. It's the right call the moment your scene has meaningful occlusion or a detector that doesn't fire every frame — below that bar, NvSORT is strictly cheaper for similar outcomes.</p>
+    </div>
+</section>
+
+<section class="slide" id="slide-06">
+    <div class="slide-number">06</div>
+    <h2>NvDeepSORT &amp; Re-ID</h2>
+    <p>NvDCF's correlation filter forgets a target's appearance once the track is lost for too long — it has no persistent memory across a long occlusion, a camera hand-off, or an object leaving and re-entering the frame. <strong>NvDeepSORT</strong> solves that with a dedicated <strong>Re-ID</strong> (re-identification) neural network: any TensorRT-compatible embedding model that maps a cropped detection to a fixed-length feature vector describing appearance in a way that's robust to pose, lighting and viewpoint change.</p>
+    <p>Every confirmed target keeps a <strong>gallery</strong> — a small store of recent feature vectors representing what it has looked like. A new detection is embedded by the Re-ID network and compared against every active target's gallery using <strong>cosine similarity</strong>; the highest-similarity match above threshold wins the association. Because the gallery persists even while a target is in "shadow" (undetected) state, a track lost for tens or hundreds of frames can still be <strong>re-associated</strong> to its original ID once it reappears — something no purely geometric or per-frame correlation approach can do.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 230" width="720" height="230" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p5b-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p5b-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p5b-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5b-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5b-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p5b-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p5b-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p5b-arrowhead); }
+            </style>
+            <defs>
+                <marker id="p5b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="20" class="p5b-title">NvDeepSORT: Re-ID association</text>
+
+            <rect x="10" y="40" width="110" height="55" rx="6" class="p5b-box"/>
+            <text x="65" y="62" class="p5b-label">detection crop</text>
+            <text x="65" y="78" class="p5b-caption">bbox from PGIE</text>
+
+            <line x1="120" y1="67" x2="150" y2="67" class="p5b-arrow"/>
+
+            <rect x="152" y="40" width="130" height="55" rx="6" class="p5b-accent"/>
+            <text x="217" y="62" class="p5b-accentlabel">Re-ID network</text>
+            <text x="217" y="78" class="p5b-caption">TensorRT engine</text>
+
+            <line x1="282" y1="67" x2="312" y2="67" class="p5b-arrow"/>
+
+            <rect x="314" y="40" width="120" height="55" rx="6" class="p5b-box"/>
+            <text x="374" y="62" class="p5b-label">feature vector</text>
+            <text x="374" y="78" class="p5b-caption">fixed-length embedding</text>
+
+            <line x1="434" y1="67" x2="464" y2="67" class="p5b-arrow"/>
+
+            <rect x="466" y="40" width="150" height="55" rx="6" class="p5b-accent"/>
+            <text x="541" y="58" class="p5b-accentlabel">cosine similarity</text>
+            <text x="541" y="74" class="p5b-caption">vs. nearest gallery entry</text>
+
+            <line x1="541" y1="95" x2="541" y2="120" class="p5b-arrow"/>
+
+            <rect x="466" y="123" width="150" height="45" rx="6" class="p5b-box"/>
+            <text x="541" y="150" class="p5b-label">object_id assigned</text>
+
+            <text x="10" y="140" class="p5b-title" style="font-size:11px;">Per-target galleries</text>
+            <rect x="10" y="150" width="130" height="60" rx="6" class="p5b-box"/>
+            <text x="75" y="170" class="p5b-caption">target #14 gallery</text>
+            <text x="75" y="184" class="p5b-caption">[v1, v2, v3, ...]</text>
+            <text x="75" y="198" class="p5b-caption">recent embeddings</text>
+            <line x1="140" y1="180" x2="465" y2="63" class="p5b-arrow" style="stroke-dasharray:3 3;"/>
+            <text x="360" y="215" class="p5b-caption">a track lost for N frames still matches its old gallery &#8594; re-association after occlusion</text>
+        </svg>
+    </div>
+</section>
+
+<section class="slide" id="slide-07">
+    <div class="slide-number">07</div>
+    <h2>Configuring the low-level library</h2>
+    <p>Whichever algorithm you select through <code>ll-config-file</code> on <code>Gst-nvtracker</code>, you're configuring the same NvMultiObjectTracker library through a YAML file organised into the same handful of groups. Here's a representative excerpt for an NvDCF / NvDeepSORT-class tracker:</p>
+    <div class="code-block">
+        <div class="code-header">config_tracker_NvDCF_accuracy.yml</div>
+        <pre><code>BaseConfig:
+  minDetectorConfidence: 0.3   # discard weak detections before association
+
+TargetManagement:
+  enableBboxUnifyingWithTracks: 1
+  maxTargetsPerStream: 150
+  minIouDiff4NewTarget: 0.5
+  minTrackerConfidence: 0.2
+  probationAge: 3               # frames before a new target is "confirmed"
+  maxShadowTrackingAge: 30      # frames a lost target is kept alive, undetected
+  earlyTerminationAge: 1
+
+DataAssociator:
+  dataAssociatorType: NvDCF
+  associationMatcherType: CASCADED     # vs. GREEDY
+  checkClassMatch: 1
+  matchingScoreWeight4VisualSimilarity: 0.6
+  matchingScoreWeight4Iou: 0.4
+  minMatchingScore4Overall: 0.3
+
+StateEstimator:
+  stateEstimatorType: REGULAR         # Simple-bbox | Regular-bbox | Simple-location
+  processNoiseVar4Loc: 2.0
+  processNoiseVar4Size: 1.0
+  measurementNoiseVar4Detector: 4.0
+
+ReID:
+  reidType: DUMMY                     # or REID for NvDeepSORT
+  networkMode: 2                      # FP16 TensorRT engine
+  reidFeatureSize: 256
+  galleryConfig:
+    minMatchingScore4Gallery: 0.35
+    galleryQueueSize: 5</code></pre>
+    </div>
+    <div class="table-wrap">
+        <table>
+            <thead>
+                <tr><th>Config group</th><th>Governs</th></tr>
+            </thead>
+            <tbody>
+                <tr><td><code>BaseConfig</code></td><td>Global thresholds applied before any tracking logic runs</td></tr>
+                <tr><td><code>TargetManagement</code></td><td>Target lifecycle — <code>probationAge</code> before an ID is confirmed, <code>maxShadowTrackingAge</code> before a lost target is deleted, ID reuse policy</td></tr>
+                <tr><td><code>DataAssociator</code></td><td>How detections are matched to targets — greedy vs. cascaded strategy, and the weighting between appearance/visual similarity and IOU</td></tr>
+                <tr><td><code>StateEstimator</code></td><td>The Kalman filter variant and its process/measurement noise — Simple-bbox, Regular-bbox, or Simple-location</td></tr>
+                <tr><td><code>ReID</code></td><td>Which embedding network to load, its precision, and gallery size/matching threshold (NvDeepSORT only)</td></tr>
+                <tr><td><code>ObjectModelProjection</code></td><td>Camera calibration (3&times;4 projection matrix) for 3D-aware tracking — see SV3DT below</td></tr>
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="slide" id="slide-08">
+    <div class="slide-number">08</div>
+    <h2>Single-View 3D Tracking (SV3DT)</h2>
+    <p>Every tracker discussed so far reasons in 2D image space — bounding boxes, pixel overlap, image-plane motion. That breaks down for a specific, common case: a person partially occluded by furniture or another pedestrian doesn't have a well-defined bounding box, because part of the body simply isn't visible, and 2D trackers can only track what the detector can bound.</p>
+    <p><strong>SV3DT</strong> addresses this by lifting tracking into world coordinates. A calibrated <strong>3&times;4 projection matrix</strong> (configured under <code>ObjectModelProjection</code>) maps between image pixels and 3D world space for a single fixed camera, and a simple <strong>3D human model</strong> — a cylinder or cuboid approximating body extent — lets the tracker reason about where the whole person is even when the detector only sees a fragment of them.</p>
+    <div class="canvas-wrap">
+        <svg viewBox="0 0 720 260" width="720" height="260" xmlns="http://www.w3.org/2000/svg">
+            <style>
+                .p5c-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
+                .p5c-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
+                .p5c-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5c-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5c-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p5c-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p5c-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p5c-arrowhead); }
+            </style>
+            <defs>
+                <marker id="p5c-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                </marker>
+            </defs>
+
+            <text x="10" y="20" class="p5c-title">SV3DT: recovering a partially occluded target</text>
+
+            <rect x="10" y="40" width="150" height="60" rx="6" class="p5c-box"/>
+            <text x="85" y="62" class="p5c-label">partial detection</text>
+            <text x="85" y="78" class="p5c-caption">occluded lower body,</text>
+            <text x="85" y="91" class="p5c-caption">bbox incomplete</text>
+
+            <line x1="160" y1="70" x2="192" y2="70" class="p5c-arrow"/>
+
+            <rect x="194" y="40" width="150" height="60" rx="6" class="p5c-accent"/>
+            <text x="269" y="62" class="p5c-accentlabel">3&times;4 projection matrix</text>
+            <text x="269" y="78" class="p5c-caption">image &#8596; world coords</text>
+            <text x="269" y="91" class="p5c-caption">(camera calibration)</text>
+
+            <line x1="344" y1="70" x2="376" y2="70" class="p5c-arrow"/>
+
+            <rect x="378" y="40" width="150" height="60" rx="6" class="p5c-accent"/>
+            <text x="453" y="58" class="p5c-accentlabel">3D human model</text>
+            <text x="453" y="74" class="p5c-caption">cylinder / cuboid</text>
+            <text x="453" y="88" class="p5c-caption">fits visible evidence</text>
+
+            <line x1="528" y1="70" x2="560" y2="70" class="p5c-arrow"/>
+
+            <rect x="562" y="40" width="148" height="60" rx="6" class="p5c-box"/>
+            <text x="636" y="62" class="p5c-label">full bbox recovered</text>
+            <text x="636" y="78" class="p5c-caption">+ world-coordinate</text>
+            <text x="636" y="91" class="p5c-caption">position</text>
+
+            <text x="360" y="130" class="p5c-caption">optional: 2D pose estimation refines the model fit for tighter recovery</text>
+
+            <rect x="60" y="150" width="600" height="90" rx="6" class="p5c-box"/>
+            <text x="360" y="172" class="p5c-title" style="font-size:11px;">Batch + sub-batch processing</text>
+            <text x="360" y="195" class="p5c-caption">nvtracker runs multiple streams through the low-level library in one batched call;</text>
+            <text x="360" y="211" class="p5c-caption">sub-batching splits work across low-level tracker instances so no instance sits GPU-idle</text>
+            <text x="360" y="227" class="p5c-caption">while waiting on a slower stream in the same batch</text>
+        </svg>
+    </div>
+    <p>Tracking in world coordinates rather than image pixels is also what makes downstream metrics — real-world speed, physical dwell zones, distance between people — accurate rather than approximated from perspective-distorted pixel measurements.</p>
+</section>
+
+<section class="slide" id="slide-09">
+    <div class="slide-number">09</div>
+    <h2>Choosing a tracker</h2>
+    <p>The right choice is almost always the cheapest algorithm that survives your scene's worst case — occlusion frequency and detector interval matter more than raw accuracy benchmarks.</p>
+    <ul>
+        <li><strong>Baseline / sanity check:</strong> <strong>IOU</strong> — near-zero overhead, fine for well-separated objects with detection on every frame.</li>
+        <li><strong>Efficient default, motion-only:</strong> <strong>NvSORT</strong> — Kalman-filtered, no appearance cost; the right starting point for most production pipelines.</li>
+        <li><strong>Crowded scenes, frequent occlusion or a skipped-frame detector:</strong> <strong>NvDCF</strong> — learned appearance keeps targets alive through gaps IOU/NvSORT would drop.</li>
+        <li><strong>Must re-identify across a long occlusion, a hand-off, or re-entry into frame:</strong> <strong>NvDeepSORT</strong> — the Re-ID gallery is the only mechanism here that recovers an ID after the target has been fully invisible.</li>
+        <li><strong>Deliverable is a pixel-accurate mask, not just a box:</strong> <strong>MaskTracker</strong> (developer preview) — tracking plus SAM2-class segmentation.</li>
+        <li><strong>Full-body recovery under partial occlusion, or world-coordinate output:</strong> layer <strong>SV3DT</strong> on top of your chosen algorithm via <code>ObjectModelProjection</code>.</li>
+    </ul>
+    <div class="callout">
+        <div class="callout-label">Key idea</div>
+        <p>Because every algorithm shares the same module architecture and config schema, upgrading from NvSORT to NvDCF or NvDeepSORT later is a config-file change, not a pipeline redesign — start cheap, and move up the table only where your footage demands it.</p>
+    </div>
+</section>
+
+<nav class="deck-nav"><a href="part4.html">&larr; Part 04 · Inference</a><a href="index.html">Index</a><a class="next" href="part6.html">Part 06 · Metadata &amp; Analytics &rarr;</a></nav>
+<footer class="footer"><p>Part of the <a href="index.html">NVIDIA DeepStream</a> presentation series &mdash; the streaming vision-AI SDK, for engineers.</p><p style="margin-top:0.5rem;font-size:0.8rem;"><a href="index.html">Back to Series Index</a></p></footer>
+
+<script>
+    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+        anchor.addEventListener('click', function (e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+    const observer = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, { threshold: 0.1 });
+    document.querySelectorAll('.slide').forEach(slide => {
+        slide.style.opacity = '0';
+        slide.style.transform = 'translateY(30px)';
+        slide.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(slide);
+    });
+</script>
+</body>
+</html>
