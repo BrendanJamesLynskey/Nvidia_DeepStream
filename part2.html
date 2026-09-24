@@ -9,15 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-card: #0d1117;
-            --bg-code: #161b22;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --accent: #76B900;
-            --accent-dim: #76B90044;
-            --accent-glow: #76B90033;
-            --border: #21262d;
+            --bg-primary: #1b1b1a;
+            --bg-card: #212120;
+            --bg-code: #292928;
+            --text-primary: #edede7;
+            --text-secondary: #9b9b95;
+            --accent: #b8b315;
+            --accent-dim: #b8b31544;
+            --accent-glow: #b8b31533;
+            --border: #363633;
             --font-display: 'Space Grotesk', sans-serif;
             --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
             --font-body: 'Inter', sans-serif;
@@ -165,7 +165,7 @@
             border: 1px solid var(--border);
             padding: 0.05rem 0.35rem;
             border-radius: 3px;
-            color: #c9d1d9;
+            color: #d5d5cf;
         }
         .code-block {
             background: var(--bg-code);
@@ -178,7 +178,7 @@
             font-family: var(--font-mono);
             font-size: 0.75rem;
             color: var(--accent);
-            background: rgba(118, 185, 0, 0.08);
+            background: rgba(184,179,21,0.08);
             padding: 0.4rem 1rem;
             border-bottom: 1px solid var(--border);
         }
@@ -187,19 +187,19 @@
             font-family: var(--font-mono);
             font-size: 0.85rem;
             line-height: 1.6;
-            color: #c9d1d9;
+            color: #d5d5cf;
             background: transparent;
             border: none;
             padding: 0;
         }
-        .kw { color: #ff7b72; }
-        .fn { color: #d2a8ff; }
-        .str { color: #a5d6ff; }
-        .cm { color: #8b949e; font-style: italic; }
-        .num { color: #79c0ff; }
-        .type { color: #ffa657; }
-        .dir { color: #ff7b72; }
-        .mac { color: #ffa657; }
+        .kw { color: #e57d63; }
+        .fn { color: #d1c2e1; }
+        .str { color: #c9dbe2; }
+        .cm { color: #9b9b95; font-style: italic; }
+        .num { color: #afcbd8; }
+        .type { color: #e0b172; }
+        .dir { color: #e57d63; }
+        .mac { color: #e0b172; }
         .table-wrap {
             overflow-x: auto;
             margin: 1.25rem 0;
@@ -223,7 +223,7 @@
             color: var(--text-secondary);
         }
         tr:last-child td { border-bottom: none; }
-        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        tr:nth-child(even) td { background: rgba(33,33,32,0.5); }
         .diagram-flow {
             display: flex;
             flex-wrap: wrap;
@@ -247,7 +247,7 @@
             text-align: center;
             white-space: nowrap;
         }
-        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(184,179,21,0.08); }
         .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
         .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
         .diagram-vertical {
@@ -290,7 +290,7 @@
             border: 1px solid var(--border);
             color: var(--text-secondary);
         }
-        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(184,179,21,0.08); }
         .diagram-grid {
             display: grid;
             gap: 0.75rem;
@@ -405,8 +405,8 @@
             margin-left: 0.3rem;
         }
         .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
-        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        .badge.warn  { border-color: #e0b172; color: #e0b172; background: rgba(224,177,114,0.08); }
+        .badge.bad   { border-color: #e57d63; color: #e57d63; background: rgba(229,125,99,0.08); }
         @media (max-width: 640px) {
             .slide { padding: 3rem 1rem; min-height: auto; }
             .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
@@ -486,17 +486,17 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 720 220" width="720" height="220" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .p2a-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .p2a-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
-                .p2a-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
-                .p2a-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
-                .p2a-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p2a-arrowhead); }
-                .p2a-caps { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
-                .p2a-pad { fill:#0d1117; stroke:#76B900; stroke-width:1.5; }
+                .p2a-box { fill:#292928; stroke:#363633; stroke-width:1; }
+                .p2a-label { fill:#edede7; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
+                .p2a-caption { fill:#9b9b95; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p2a-title { fill:#b8b315; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p2a-arrow { stroke:#b8b315; stroke-width:1.5; fill:none; marker-end:url(#p2a-arrowhead); }
+                .p2a-caps { fill:#b8b315; font-family:'JetBrains Mono',monospace; font-size:10px; text-anchor:middle; }
+                .p2a-pad { fill:#212120; stroke:#b8b315; stroke-width:1.5; }
             </style>
             <defs>
                 <marker id="p2a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/>
                 </marker>
             </defs>
             <text x="10" y="24" class="p2a-title">Two linked elements, negotiated caps</text>
@@ -511,8 +511,8 @@
 
             <circle cx="310" cy="105" r="6" class="p2a-pad"/>
             <text x="310" y="150" class="p2a-caption">sink</text>
-            <rect x="310" y="70" width="180" height="70" rx="6" class="p2a-box" style="fill:rgba(118,185,0,0.08);stroke:#76B900;"/>
-            <text x="400" y="100" class="p2a-label" style="fill:#76B900;">nvv4l2decoder</text>
+            <rect x="310" y="70" width="180" height="70" rx="6" class="p2a-box" style="fill:rgba(184,179,21,0.08);stroke:#b8b315;"/>
+            <text x="400" y="100" class="p2a-label" style="fill:#b8b315;">nvv4l2decoder</text>
             <text x="400" y="118" class="p2a-caption">NVDEC hardware decode</text>
             <circle cx="490" cy="105" r="6" class="p2a-pad"/>
             <text x="490" y="150" class="p2a-caption">src</text>
@@ -574,21 +574,21 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 720 260" width="720" height="260" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .p2b-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .p2b-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
-                .p2b-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
-                .p2b-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
-                .p2b-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
-                .p2b-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
-                .p2b-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p2b-arrowhead); }
-                .p2b-badarrow { stroke:#ff7b72; stroke-width:1.5; fill:none; marker-end:url(#p2b-badarrowhead); stroke-dasharray:3,3; }
+                .p2b-box { fill:#292928; stroke:#363633; stroke-width:1; }
+                .p2b-accent { fill:rgba(184,179,21,0.08); stroke:#b8b315; stroke-width:1; }
+                .p2b-label { fill:#edede7; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
+                .p2b-accentlabel { fill:#b8b315; font-family:'JetBrains Mono',monospace; font-size:11px; text-anchor:middle; }
+                .p2b-caption { fill:#9b9b95; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p2b-title { fill:#b8b315; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p2b-arrow { stroke:#b8b315; stroke-width:1.5; fill:none; marker-end:url(#p2b-arrowhead); }
+                .p2b-badarrow { stroke:#e57d63; stroke-width:1.5; fill:none; marker-end:url(#p2b-badarrowhead); stroke-dasharray:3,3; }
             </style>
             <defs>
                 <marker id="p2b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/>
                 </marker>
                 <marker id="p2b-badarrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#ff7b72"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#e57d63"/>
                 </marker>
             </defs>
 
@@ -611,11 +611,11 @@
             <rect x="20" y="175" width="150" height="55" rx="6" class="p2b-box"/>
             <text x="95" y="207" class="p2b-label">decode (GPU)</text>
             <line x1="170" y1="202" x2="215" y2="202" class="p2b-badarrow"/>
-            <text x="192" y="195" class="p2b-caption" style="fill:#ff7b72;">copy</text>
+            <text x="192" y="195" class="p2b-caption" style="fill:#e57d63;">copy</text>
             <rect x="220" y="175" width="150" height="55" rx="6" class="p2b-box"/>
             <text x="295" y="207" class="p2b-label">infer (host&#8594;GPU)</text>
             <line x1="370" y1="202" x2="415" y2="202" class="p2b-badarrow"/>
-            <text x="392" y="195" class="p2b-caption" style="fill:#ff7b72;">copy</text>
+            <text x="392" y="195" class="p2b-caption" style="fill:#e57d63;">copy</text>
             <rect x="420" y="175" width="150" height="55" rx="6" class="p2b-box"/>
             <text x="495" y="207" class="p2b-label">draw (host)</text>
             <line x1="570" y1="202" x2="600" y2="202" class="p2b-badarrow"/>
@@ -678,18 +678,18 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 720 340" width="720" height="340" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .p2c-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .p2c-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
-                .p2c-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-anchor:middle; }
-                .p2c-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-anchor:middle; }
-                .p2c-caption { fill:#8b949e; font-size:9px; font-family:'Inter',sans-serif; text-anchor:middle; }
-                .p2c-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
-                .p2c-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p2c-arrowhead); }
-                .p2c-meta { fill:#8b949e; font-family:'JetBrains Mono',monospace; font-size:9px; text-anchor:middle; }
+                .p2c-box { fill:#292928; stroke:#363633; stroke-width:1; }
+                .p2c-accent { fill:rgba(184,179,21,0.08); stroke:#b8b315; stroke-width:1; }
+                .p2c-label { fill:#edede7; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-anchor:middle; }
+                .p2c-accentlabel { fill:#b8b315; font-family:'JetBrains Mono',monospace; font-size:10.5px; text-anchor:middle; }
+                .p2c-caption { fill:#9b9b95; font-size:9px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p2c-title { fill:#b8b315; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p2c-arrow { stroke:#b8b315; stroke-width:1.5; fill:none; marker-end:url(#p2c-arrowhead); }
+                .p2c-meta { fill:#9b9b95; font-family:'JetBrains Mono',monospace; font-size:9px; text-anchor:middle; }
             </style>
             <defs>
                 <marker id="p2c-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/>
                 </marker>
             </defs>
 

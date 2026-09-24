@@ -9,15 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-card: #0d1117;
-            --bg-code: #161b22;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --accent: #76B900;
-            --accent-dim: #76B90044;
-            --accent-glow: #76B90033;
-            --border: #21262d;
+            --bg-primary: #1b1b1a;
+            --bg-card: #212120;
+            --bg-code: #292928;
+            --text-primary: #edede7;
+            --text-secondary: #9b9b95;
+            --accent: #b8b315;
+            --accent-dim: #b8b31544;
+            --accent-glow: #b8b31533;
+            --border: #363633;
             --font-display: 'Space Grotesk', sans-serif;
             --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
             --font-body: 'Inter', sans-serif;
@@ -165,7 +165,7 @@
             border: 1px solid var(--border);
             padding: 0.05rem 0.35rem;
             border-radius: 3px;
-            color: #c9d1d9;
+            color: #d5d5cf;
         }
         .code-block {
             background: var(--bg-code);
@@ -178,7 +178,7 @@
             font-family: var(--font-mono);
             font-size: 0.75rem;
             color: var(--accent);
-            background: rgba(118, 185, 0, 0.08);
+            background: rgba(184,179,21,0.08);
             padding: 0.4rem 1rem;
             border-bottom: 1px solid var(--border);
         }
@@ -187,19 +187,19 @@
             font-family: var(--font-mono);
             font-size: 0.85rem;
             line-height: 1.6;
-            color: #c9d1d9;
+            color: #d5d5cf;
             background: transparent;
             border: none;
             padding: 0;
         }
-        .kw { color: #ff7b72; }
-        .fn { color: #d2a8ff; }
-        .str { color: #a5d6ff; }
-        .cm { color: #8b949e; font-style: italic; }
-        .num { color: #79c0ff; }
-        .type { color: #ffa657; }
-        .dir { color: #ff7b72; }
-        .mac { color: #ffa657; }
+        .kw { color: #e57d63; }
+        .fn { color: #d1c2e1; }
+        .str { color: #c9dbe2; }
+        .cm { color: #9b9b95; font-style: italic; }
+        .num { color: #afcbd8; }
+        .type { color: #e0b172; }
+        .dir { color: #e57d63; }
+        .mac { color: #e0b172; }
         .table-wrap {
             overflow-x: auto;
             margin: 1.25rem 0;
@@ -223,7 +223,7 @@
             color: var(--text-secondary);
         }
         tr:last-child td { border-bottom: none; }
-        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        tr:nth-child(even) td { background: rgba(33,33,32,0.5); }
         .diagram-flow {
             display: flex;
             flex-wrap: wrap;
@@ -247,7 +247,7 @@
             text-align: center;
             white-space: nowrap;
         }
-        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(184,179,21,0.08); }
         .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
         .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
         .diagram-vertical {
@@ -290,7 +290,7 @@
             border: 1px solid var(--border);
             color: var(--text-secondary);
         }
-        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(184,179,21,0.08); }
         .diagram-grid {
             display: grid;
             gap: 0.75rem;
@@ -405,8 +405,8 @@
             margin-left: 0.3rem;
         }
         .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
-        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        .badge.warn  { border-color: #e0b172; color: #e0b172; background: rgba(224,177,114,0.08); }
+        .badge.bad   { border-color: #e57d63; color: #e57d63; background: rgba(229,125,99,0.08); }
         @media (max-width: 640px) {
             .slide { padding: 3rem 1rem; min-height: auto; }
             .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
@@ -494,17 +494,17 @@
 <div class="canvas-wrap">
 <svg viewBox="0 0 720 400" width="720" height="400" xmlns="http://www.w3.org/2000/svg">
 <defs>
-<marker id="p1s3-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/></marker>
+<marker id="p1s3-arrow" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/></marker>
 </defs>
 <style>
-.p1s3-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
-.p1s3-box-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
-.p1s3-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
-.p1s3-label-accent{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
-.p1s3-sub{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
-.p1s3-title{fill:#76B900;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
-.p1s3-arrow{stroke:#76B900;stroke-width:1.5;fill:none;marker-end:url(#p1s3-arrow);}
-.p1s3-dash{stroke:#8b949e;stroke-width:1.2;fill:none;stroke-dasharray:3,3;marker-end:url(#p1s3-arrow);}
+.p1s3-box{fill:#292928;stroke:#363633;stroke-width:1;}
+.p1s3-box-accent{fill:rgba(184,179,21,0.08);stroke:#b8b315;stroke-width:1;}
+.p1s3-label{fill:#edede7;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s3-label-accent{fill:#b8b315;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s3-sub{fill:#9b9b95;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:middle;}
+.p1s3-title{fill:#b8b315;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:12px;}
+.p1s3-arrow{stroke:#b8b315;stroke-width:1.5;fill:none;marker-end:url(#p1s3-arrow);}
+.p1s3-dash{stroke:#9b9b95;stroke-width:1.2;fill:none;stroke-dasharray:3,3;marker-end:url(#p1s3-arrow);}
 </style>
 
 <text x="10" y="20" class="p1s3-title">deepstream-app pipeline (single stream, replicated N&times;)</text>
@@ -660,11 +660,11 @@
 <div class="canvas-wrap">
 <svg viewBox="0 0 720 320" width="720" height="320" xmlns="http://www.w3.org/2000/svg">
 <style>
-.p1s7-box{fill:#161b22;stroke:#21262d;stroke-width:1;}
-.p1s7-box-accent{fill:rgba(118,185,0,0.08);stroke:#76B900;stroke-width:1;}
-.p1s7-label{fill:#e6edf3;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
-.p1s7-label-accent{fill:#76B900;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
-.p1s7-tier{fill:#8b949e;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:start;text-transform:uppercase;letter-spacing:0.05em;}
+.p1s7-box{fill:#292928;stroke:#363633;stroke-width:1;}
+.p1s7-box-accent{fill:rgba(184,179,21,0.08);stroke:#b8b315;stroke-width:1;}
+.p1s7-label{fill:#edede7;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s7-label-accent{fill:#b8b315;font-family:'JetBrains Mono',monospace;font-size:11px;text-anchor:middle;}
+.p1s7-tier{fill:#9b9b95;font-family:'JetBrains Mono',monospace;font-size:9px;text-anchor:start;text-transform:uppercase;letter-spacing:0.05em;}
 </style>
 
 <text x="10" y="18" class="p1s7-tier">application layer</text>
@@ -707,9 +707,9 @@
 <rect x="585" y="246" width="125" height="42" rx="6" class="p1s7-box"/>
 <text x="647" y="268" class="p1s7-label">VIC</text>
 
-<line x1="92" y1="66" x2="92" y2="98" stroke="#76B900" stroke-width="1"/>
-<line x1="360" y1="140" x2="360" y2="172" stroke="#76B900" stroke-width="1"/>
-<line x1="360" y1="214" x2="360" y2="246" stroke="#76B900" stroke-width="1"/>
+<line x1="92" y1="66" x2="92" y2="98" stroke="#b8b315" stroke-width="1"/>
+<line x1="360" y1="140" x2="360" y2="172" stroke="#b8b315" stroke-width="1"/>
+<line x1="360" y1="214" x2="360" y2="246" stroke="#b8b315" stroke-width="1"/>
 </svg>
 </div>
 <p>Everything above the plugin layer talks to the same underlying element graph: <code>deepstream-app</code> reads a config file and instantiates a fixed pipeline; C++/Python apps build the graph programmatically via <code>pyds</code>; Graph Composer and Service Maker generate and orchestrate that same graph visually or as containerised microservices.</p>

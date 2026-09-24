@@ -9,15 +9,15 @@
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-primary: #0a0a0a;
-            --bg-card: #0d1117;
-            --bg-code: #161b22;
-            --text-primary: #e6edf3;
-            --text-secondary: #8b949e;
-            --accent: #76B900;
-            --accent-dim: #76B90044;
-            --accent-glow: #76B90033;
-            --border: #21262d;
+            --bg-primary: #1b1b1a;
+            --bg-card: #212120;
+            --bg-code: #292928;
+            --text-primary: #edede7;
+            --text-secondary: #9b9b95;
+            --accent: #b8b315;
+            --accent-dim: #b8b31544;
+            --accent-glow: #b8b31533;
+            --border: #363633;
             --font-display: 'Space Grotesk', sans-serif;
             --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
             --font-body: 'Inter', sans-serif;
@@ -165,7 +165,7 @@
             border: 1px solid var(--border);
             padding: 0.05rem 0.35rem;
             border-radius: 3px;
-            color: #c9d1d9;
+            color: #d5d5cf;
         }
         .code-block {
             background: var(--bg-code);
@@ -178,7 +178,7 @@
             font-family: var(--font-mono);
             font-size: 0.75rem;
             color: var(--accent);
-            background: rgba(118, 185, 0, 0.08);
+            background: rgba(184,179,21,0.08);
             padding: 0.4rem 1rem;
             border-bottom: 1px solid var(--border);
         }
@@ -187,19 +187,19 @@
             font-family: var(--font-mono);
             font-size: 0.85rem;
             line-height: 1.6;
-            color: #c9d1d9;
+            color: #d5d5cf;
             background: transparent;
             border: none;
             padding: 0;
         }
-        .kw { color: #ff7b72; }
-        .fn { color: #d2a8ff; }
-        .str { color: #a5d6ff; }
-        .cm { color: #8b949e; font-style: italic; }
-        .num { color: #79c0ff; }
-        .type { color: #ffa657; }
-        .dir { color: #ff7b72; }
-        .mac { color: #ffa657; }
+        .kw { color: #e57d63; }
+        .fn { color: #d1c2e1; }
+        .str { color: #c9dbe2; }
+        .cm { color: #9b9b95; font-style: italic; }
+        .num { color: #afcbd8; }
+        .type { color: #e0b172; }
+        .dir { color: #e57d63; }
+        .mac { color: #e0b172; }
         .table-wrap {
             overflow-x: auto;
             margin: 1.25rem 0;
@@ -223,7 +223,7 @@
             color: var(--text-secondary);
         }
         tr:last-child td { border-bottom: none; }
-        tr:nth-child(even) td { background: rgba(13, 17, 23, 0.5); }
+        tr:nth-child(even) td { background: rgba(33,33,32,0.5); }
         .diagram-flow {
             display: flex;
             flex-wrap: wrap;
@@ -247,7 +247,7 @@
             text-align: center;
             white-space: nowrap;
         }
-        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .diagram-box.accent { border-color: var(--accent); color: var(--accent); background: rgba(184,179,21,0.08); }
         .diagram-box.dim { color: var(--text-secondary); border-color: var(--border); }
         .diagram-arrow { color: var(--accent); font-size: 1.3rem; font-weight: 700; }
         .diagram-vertical {
@@ -290,7 +290,7 @@
             border: 1px solid var(--border);
             color: var(--text-secondary);
         }
-        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(118, 185, 0, 0.08); }
+        .hierarchy-item.accent { border-color: var(--accent); color: var(--accent); background: rgba(184,179,21,0.08); }
         .diagram-grid {
             display: grid;
             gap: 0.75rem;
@@ -405,8 +405,8 @@
             margin-left: 0.3rem;
         }
         .badge.ok    { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
-        .badge.warn  { border-color: #ffa657; color: #ffa657; background: rgba(255,166,87,0.08); }
-        .badge.bad   { border-color: #ff7b72; color: #ff7b72; background: rgba(255,123,114,0.08); }
+        .badge.warn  { border-color: #e0b172; color: #e0b172; background: rgba(224,177,114,0.08); }
+        .badge.bad   { border-color: #e57d63; color: #e57d63; background: rgba(229,125,99,0.08); }
         @media (max-width: 640px) {
             .slide { padding: 3rem 1rem; min-height: auto; }
             .slide-number { font-size: 3rem; top: 1.5rem; right: 1rem; }
@@ -478,21 +478,21 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 720 300" width="720" height="300" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .p5a-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .p5a-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
-                .p5a-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
-                .p5a-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
-                .p5a-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
-                .p5a-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
-                .p5a-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p5a-arrowhead); }
-                .p5a-dash { stroke:#ffa657; stroke-width:1.5; stroke-dasharray:4 3; fill:none; marker-end:url(#p5a-dasharrowhead); }
+                .p5a-box { fill:#292928; stroke:#363633; stroke-width:1; }
+                .p5a-accent { fill:rgba(184,179,21,0.08); stroke:#b8b315; stroke-width:1; }
+                .p5a-label { fill:#edede7; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
+                .p5a-accentlabel { fill:#b8b315; font-family:'JetBrains Mono',monospace; font-size:12px; text-anchor:middle; }
+                .p5a-caption { fill:#9b9b95; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p5a-title { fill:#b8b315; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p5a-arrow { stroke:#b8b315; stroke-width:1.5; fill:none; marker-end:url(#p5a-arrowhead); }
+                .p5a-dash { stroke:#e0b172; stroke-width:1.5; stroke-dasharray:4 3; fill:none; marker-end:url(#p5a-dasharrowhead); }
             </style>
             <defs>
                 <marker id="p5a-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/>
                 </marker>
                 <marker id="p5a-dasharrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#ffa657"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#e0b172"/>
                 </marker>
             </defs>
 
@@ -525,8 +525,8 @@
             <text x="591" y="153" class="p5a-label">object_id + bbox out</text>
 
             <text x="409" y="115" class="p5a-caption">optional, feeds back into association &amp; state:</text>
-            <rect x="334" y="128" width="150" height="55" rx="6" class="p5a-box" style="stroke:#ffa657;"/>
-            <text x="409" y="150" class="p5a-label" style="fill:#ffa657;">Re-ID / appearance</text>
+            <rect x="334" y="128" width="150" height="55" rx="6" class="p5a-box" style="stroke:#e0b172;"/>
+            <text x="409" y="150" class="p5a-label" style="fill:#e0b172;">Re-ID / appearance</text>
             <text x="409" y="167" class="p5a-caption">feature embedding + gallery</text>
             <line x1="409" y1="128" x2="360" y2="95" class="p5a-dash"/>
             <line x1="484" y1="155" x2="516" y2="155" class="p5a-dash"/>
@@ -615,17 +615,17 @@
     <div class="canvas-wrap">
         <svg viewBox="0 0 720 230" width="720" height="230" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .p5b-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .p5b-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
-                .p5b-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
-                .p5b-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
-                .p5b-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
-                .p5b-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
-                .p5b-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p5b-arrowhead); }
+                .p5b-box { fill:#292928; stroke:#363633; stroke-width:1; }
+                .p5b-accent { fill:rgba(184,179,21,0.08); stroke:#b8b315; stroke-width:1; }
+                .p5b-label { fill:#edede7; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5b-accentlabel { fill:#b8b315; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5b-caption { fill:#9b9b95; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p5b-title { fill:#b8b315; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p5b-arrow { stroke:#b8b315; stroke-width:1.5; fill:none; marker-end:url(#p5b-arrowhead); }
             </style>
             <defs>
                 <marker id="p5b-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/>
                 </marker>
             </defs>
 
@@ -734,17 +734,17 @@ ReID:
     <div class="canvas-wrap">
         <svg viewBox="0 0 720 260" width="720" height="260" xmlns="http://www.w3.org/2000/svg">
             <style>
-                .p5c-box { fill:#161b22; stroke:#21262d; stroke-width:1; }
-                .p5c-accent { fill:rgba(118,185,0,0.08); stroke:#76B900; stroke-width:1; }
-                .p5c-label { fill:#e6edf3; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
-                .p5c-accentlabel { fill:#76B900; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
-                .p5c-caption { fill:#8b949e; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
-                .p5c-title { fill:#76B900; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
-                .p5c-arrow { stroke:#76B900; stroke-width:1.5; fill:none; marker-end:url(#p5c-arrowhead); }
+                .p5c-box { fill:#292928; stroke:#363633; stroke-width:1; }
+                .p5c-accent { fill:rgba(184,179,21,0.08); stroke:#b8b315; stroke-width:1; }
+                .p5c-label { fill:#edede7; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5c-accentlabel { fill:#b8b315; font-family:'JetBrains Mono',monospace; font-size:11.5px; text-anchor:middle; }
+                .p5c-caption { fill:#9b9b95; font-size:10px; font-family:'Inter',sans-serif; text-anchor:middle; }
+                .p5c-title { fill:#b8b315; font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:12px; }
+                .p5c-arrow { stroke:#b8b315; stroke-width:1.5; fill:none; marker-end:url(#p5c-arrowhead); }
             </style>
             <defs>
                 <marker id="p5c-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
-                    <path d="M0,0 L6,3 L0,6 Z" fill="#76B900"/>
+                    <path d="M0,0 L6,3 L0,6 Z" fill="#b8b315"/>
                 </marker>
             </defs>
 
